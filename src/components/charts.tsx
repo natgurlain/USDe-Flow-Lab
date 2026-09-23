@@ -5,6 +5,7 @@ import {
   AreaChart,
   Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Line,
   LineChart,
@@ -28,7 +29,9 @@ type TipEntry = {
 };
 
 function formatTooltipValue(name: string, value: number) {
-  if (name.toLowerCase().includes("score")) return value.toFixed(2);
+  if (name.toLowerCase().includes("score")) {
+    return (value > 0 ? "+" : "") + value.toFixed(2);
+  }
   if (name.toLowerCase().includes("ratio")) return (value * 100).toFixed(1) + "%";
   if (name.toLowerCase().includes("apy") || name.toLowerCase().includes("funding") || name === "T-bill") {
     return value.toFixed(2) + "%";
@@ -218,17 +221,32 @@ function axisDays(range: RangeKey) {
 export function SupplyChart({
   data,
   events,
+  forces,
   range,
   logScale = false,
   showStaking = false,
 }: {
   data: SupplyPoint[];
   events: EventItem[];
+  forces?: ForcePoint[];
   range: RangeKey;
   logScale?: boolean;
   showStaking?: boolean;
 }) {
-  const visible = sliceByRange(data, range);
+  const hasForceScore = Boolean(forces?.length);
+  const forceScoreByDate = new Map(
+    (forces ?? []).map((point) => [point.date, point.forceScore] as const),
+  );
+  const chartData = data.map((point) => ({
+    ...point,
+    forceScore: forceScoreByDate.get(point.date) ?? null,
+  }));
+  const visible = sliceByRange(chartData, range);
+  const scoreMagnitude = visible.reduce(
+    (maximum, point) => Math.max(maximum, Math.abs(point.forceScore ?? 0)),
+    0,
+  );
+  const scoreLimit = Math.max(1, Math.ceil(scoreMagnitude * 2) / 2);
   const visibleDates = new Set(visible.map((point) => point.date));
   const visibleEvents = events.filter((event) => visibleDates.has(event.date));
 
@@ -236,14 +254,19 @@ export function SupplyChart({
     <div
       className="chart-frame supply-chart-frame"
       role="img"
-      aria-label="USDe circulating supply history with optional staked supply overlay and event markers"
+      aria-label={
+        hasForceScore
+          ? "USDe circulating supply and signed ForceScore over time; supply uses the left dollar axis and ForceScore uses the right axis around zero"
+          : "USDe circulating supply history with optional staked supply overlay and event markers"
+      }
     >
       <p className="sr-only">
-        Supply rises through 2024 and 2025, peaks near 14.8 billion dollars in October 2025,
-        falls in two simulated shocks, and recovers to about 4.9 billion dollars in September 2026.
+        {hasForceScore
+          ? "Supply is shown in dollars on the left axis. ForceScore is shown on the right axis; positive mint-side pressure is green above zero and negative redeem-side pressure is red below zero. The score is a heuristic, not a forecast."
+          : "USDe circulating supply history, with event markers and an optional estimated sUSDe supply overlay."}
       </p>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={visible} margin={{ top: 20, right: 8, left: 2, bottom: 0 }}>
+        <ComposedChart data={visible} margin={{ top: 20, right: 2, left: 2, bottom: 0 }}>
           <defs>
             <linearGradient id="supplyFill" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="#9bc6ff" stopOpacity={0.2} />
@@ -266,7 +289,7 @@ export function SupplyChart({
           />
           <YAxis
             yAxisId="supply"
-            orientation="right"
+            orientation={hasForceScore ? "left" : "right"}
             scale={logScale ? "log" : "auto"}
             domain={logScale ? [100_000_000, "auto"] : ["auto", "auto"]}
             tickFormatter={formatAxisMoney}
@@ -275,7 +298,23 @@ export function SupplyChart({
             tickLine={false}
             width={56}
           />
-          {showStaking && (
+          {hasForceScore && (
+            <YAxis
+              yAxisId="score"
+              orientation="right"
+              domain={[-scoreLimit, scoreLimit]}
+              tickFormatter={(value) => {
+                const score = Number(value);
+                return score > 0 ? "+" + score.toFixed(1) : score.toFixed(1);
+              }}
+              tick={{ fill: "#9ca8aa", fontSize: 10 }}
+              axisLine={false}
+              tickLine={false}
+              tickCount={5}
+              width={38}
+            />
+          )}
+          {showStaking && !hasForceScore && (
             <YAxis
               yAxisId="staking"
               orientation="left"
@@ -287,6 +326,15 @@ export function SupplyChart({
             />
           )}
           <Tooltip content={<ChartTooltip />} />
+          {hasForceScore && (
+            <ReferenceLine
+              yAxisId="score"
+              y={0}
+              stroke="#687477"
+              strokeDasharray="4 4"
+              strokeOpacity={0.8}
+            />
+          )}
           {visibleEvents.map((event) => (
             <ReferenceLine
               key={event.id}
@@ -335,7 +383,7 @@ export function SupplyChart({
           />
           {showStaking && (
             <Area
-              yAxisId="staking"
+              yAxisId={hasForceScore ? "supply" : "staking"}
               type="monotone"
               dataKey="susdeSupply"
               name="sUSDe supply · modelled"
@@ -346,7 +394,24 @@ export function SupplyChart({
               dot={false}
             />
           )}
-        </AreaChart>
+          {hasForceScore && (
+            <Bar
+              yAxisId="score"
+              dataKey="forceScore"
+              name="ForceScore"
+              maxBarSize={5}
+              fill="#3ddc97"
+            >
+              {visible.map((point) => (
+                <Cell
+                  key={point.date}
+                  fill={(point.forceScore ?? 0) >= 0 ? "#3ddc97" : "#ff5a5f"}
+                  fillOpacity={0.8}
+                />
+              ))}
+            </Bar>
+          )}
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

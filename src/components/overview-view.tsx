@@ -98,8 +98,8 @@ export default function OverviewView({
       <div className="overview-grid">
         <div className="overview-main">
           <Panel
-            title="USDe circulating supply"
-            eyebrow="SUPPLY STOCK · USD"
+            title="Supply & ForceScore"
+            eyebrow="SUPPLY STOCK · USD + HEURISTIC SCORE"
             className="supply-panel"
             action={
               <div className="chart-controls">
@@ -138,20 +138,41 @@ export default function OverviewView({
             }
           >
             <div className="panel-source-line">
-              <span>Supply path · first recorded demo mint through today</span>
-              <DataBadge
-                status={data.sources.supply.status}
-                label={data.sources.supply.status === "live" ? "LIVE · DEFILLAMA" : "SIMULATED"}
-              />
+              <span>Supply in USD (left axis) · ForceScore around zero (right axis)</span>
+              <span className="source-badges">
+                <DataBadge
+                  status={data.sources.supply.status}
+                  label={
+                    data.sources.supply.status === "live"
+                      ? "LIVE SUPPLY"
+                      : data.sources.supply.status === "stale"
+                        ? "STALE SUPPLY"
+                        : "DEMO SUPPLY"
+                  }
+                />
+                <DataBadge
+                  status={data.sources.forces.status}
+                  label={
+                    data.sources.forces.status === "live"
+                      ? "LIVE SCORE"
+                      : data.sources.forces.status === "stale"
+                        ? "STALE SCORE"
+                        : "DEMO SCORE"
+                  }
+                />
+              </span>
             </div>
             <SupplyChart
               data={data.supplyPoints}
               events={data.events}
+              forces={data.forces}
               range={range}
               logScale={logScale}
             />
             <div className="chart-legend">
               <span><i className="legend-line supply-line" />USDe supply</span>
+              <span><i className="legend-block score-positive" />Positive score · mint-side</span>
+              <span><i className="legend-block score-negative" />Negative score · redeem-side</span>
               <span className="legend-note">ATH annotation: ~$14.8B · Oct 2025 · demo path</span>
             </div>
           </Panel>
