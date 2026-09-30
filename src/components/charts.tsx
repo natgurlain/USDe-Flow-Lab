@@ -80,10 +80,10 @@ export default function HistoryChart({
                   timeZone: "UTC",
                 }).format(new Date(date))
               }
-              minTickGap={45}
+              minTickGap={55}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#8b9694", fontSize: 11 }}
+              tick={{ fill: "#8b9694", fontSize: 12 }}
             />
             <YAxis
               domain={
@@ -97,10 +97,10 @@ export default function HistoryChart({
                     : [0, "auto"]
               }
               tickFormatter={formatAxis}
-              width={70}
+              width={80}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#8b9694", fontSize: 11 }}
+              tick={{ fill: "#8b9694", fontSize: 12 }}
             />
             <Tooltip
               labelFormatter={(label) =>
@@ -131,7 +131,7 @@ export default function HistoryChart({
                   value: "$1 target · 0%",
                   position: "insideTopRight",
                   fill: "#a1aba7",
-                  fontSize: 11,
+                  fontSize: 12,
                 }}
               />
             )}

@@ -22,7 +22,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: Arial, Helvetica, sans-serif;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
@@ -131,14 +131,14 @@ svg {
   display: block;
 }
 .brand small {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 3.4px;
   color: var(--muted);
   display: block;
   margin-top: 3px;
 }
 .sidebar-label {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.7px;
   margin: 49px 12px 17px;
   color: var(--subtle);
@@ -155,7 +155,7 @@ svg {
   align-items: center;
   color: var(--muted);
   border-radius: 9px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .nav-link:hover {
   background: #ffffff05;
@@ -183,7 +183,7 @@ svg {
   color: var(--mint);
 }
 .sidebar-note h3 {
-  font-size: 13px;
+  font-size: 14px;
   margin: 15px 0 9px;
   color: var(--text);
 }
@@ -204,7 +204,7 @@ svg {
 }
 .independent-label {
   display: block;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--subtle);
   padding: 0 13px;
   line-height: 1.8;
@@ -246,7 +246,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .public-status i {
@@ -267,7 +267,7 @@ svg {
   border: 1px solid var(--line);
   padding: 8px 12px;
   border-radius: 7px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .refresh-button:hover {
   border-color: #526b58;
@@ -291,12 +291,12 @@ svg {
   align-items: center;
   gap: 15px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .range-toolbar small {
   color: var(--subtle);
   margin-left: 8px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .range-toolbar > div {
   display: flex;
@@ -312,7 +312,7 @@ svg {
   border-radius: 5px;
   color: var(--muted);
   padding: 5px 12px;
-  font-size: 10px;
+  font-size: 12px;
   min-height: 29px;
 }
 .range-toolbar button.selected {
@@ -347,7 +347,7 @@ svg {
   z-index: 2;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 2px;
   font-weight: 600;
   color: var(--subtle);
@@ -375,7 +375,7 @@ svg {
   color: var(--accent);
 }
 .hero-description {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
   margin-top: 18px;
   color: #aebfac;
@@ -385,7 +385,7 @@ svg {
   align-items: center;
   gap: 14px;
   margin-top: 22px;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
 }
 .hero-link:hover {
@@ -442,7 +442,7 @@ svg {
 .art-caption {
   position: absolute;
   bottom: -6px;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 2.1px;
   color: #9fbb9180;
 }
@@ -457,7 +457,7 @@ svg {
   margin-bottom: 8px;
 }
 .quiet {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--subtle);
 }
 .headline-grid {
@@ -475,7 +475,7 @@ svg {
   flex-direction: column;
 }
 .metric-label {
-  font-size: 10px;
+  font-size: 12px;
   color: #b5c2b6;
   font-weight: 500;
   line-height: 1.5;
@@ -495,13 +495,13 @@ svg {
   letter-spacing: -0.7px;
 }
 .metric-detail {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--subtle);
   margin-top: 5px;
   min-height: 15px;
 }
 .metric-explanation {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.7;
   margin: 13px 0 16px;
@@ -516,7 +516,7 @@ svg {
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .source-line a {
   color: var(--muted);
@@ -528,7 +528,7 @@ svg {
   color: var(--accent);
 }
 .data-status {
-  font-size: 8px;
+  font-size: 12px;
   padding: 2px 6px;
   border-radius: 4px;
   white-space: nowrap;
@@ -551,23 +551,23 @@ svg {
   background: #f2ce8214;
 }
 .observation {
-  font-size: 8px;
+  font-size: 12px;
   line-height: 1.7;
   color: var(--subtle);
   margin-top: 5px;
   overflow-wrap: anywhere;
 }
 .method-details {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--subtle);
   margin-top: 9px;
 }
 .method-details summary {
   cursor: pointer;
-  font-size: 9px;
+  font-size: 12px;
 }
 .method-details p {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.65;
   margin-top: 7px;
   color: var(--muted);
@@ -631,13 +631,13 @@ svg {
   letter-spacing: -0.5px;
 }
 .panel-description {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.8;
   margin-top: 10px;
   max-width: 600px;
 }
 .panel-heading .eyebrow {
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.8px;
 }
 .chart {
@@ -656,10 +656,10 @@ svg {
   border-radius: 8px;
   color: var(--subtle);
   padding: 20px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .chart-empty p {
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 8px;
   max-width: 280px;
 }
@@ -674,14 +674,14 @@ svg {
 }
 .chart-footer > span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 12px;
   max-width: 50%;
   line-height: 1.8;
 }
 .chart-table {
   margin-top: 15px;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
 }
 .chart-table summary {
   cursor: pointer;
@@ -694,7 +694,7 @@ svg {
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: 12px;
 }
 th,
 td {
@@ -713,7 +713,7 @@ caption {
   text-align: left;
   color: var(--subtle);
   padding: 8px 12px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .token-guide {
   display: grid;
@@ -739,7 +739,7 @@ caption {
   color: var(--mint);
 }
 .token-top span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .token-card h3 {
@@ -755,7 +755,7 @@ caption {
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
   margin-top: 14px;
 }
@@ -763,7 +763,7 @@ caption {
   color: white;
 }
 .body-copy {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.9;
   margin-bottom: 8px;
 }
@@ -779,10 +779,10 @@ caption {
   padding-top: 0;
 }
 .ecosystem-row b {
-  font-size: 13px;
+  font-size: 14px;
 }
 .ecosystem-row p {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.7;
   margin-top: 4px;
 }
@@ -792,7 +792,7 @@ caption {
   white-space: nowrap;
 }
 .ecosystem-source {
-  font-size: 9px;
+  font-size: 12px;
   color: var(--subtle);
   margin: 7px 0;
 }
@@ -835,7 +835,7 @@ caption {
   display: block;
 }
 .unavailable h3 {
-  font-size: 13px;
+  font-size: 14px;
   color: #c2cdc3;
   margin-bottom: 10px;
 }
@@ -849,7 +849,7 @@ caption {
   justify-content: center;
 }
 .small-copy {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.9;
   color: var(--subtle);
   margin-top: 16px;
@@ -861,7 +861,7 @@ caption {
   margin: 25px 0 12px;
 }
 .explain-steps article > span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--accent);
 }
 .explain-steps h3 {
@@ -885,11 +885,11 @@ caption {
   gap: 15px;
   justify-content: space-between;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   margin-bottom: 8px;
 }
 .chain-row b {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 400;
   color: var(--muted);
 }
@@ -910,7 +910,7 @@ caption {
   margin: 0;
   padding: 0 0 0 18px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.9;
 }
 .simple-list li {
@@ -928,7 +928,7 @@ caption {
   margin-top: 20px;
 }
 .calculator-fields label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .calculator-fields input {
@@ -953,7 +953,7 @@ caption {
   gap: 8px;
 }
 .calculator-result span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .calculator-result strong {
@@ -987,7 +987,7 @@ caption {
 }
 .risk-number {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
 }
 .risk-card b {
   display: block;
@@ -998,7 +998,7 @@ caption {
 .risk-card small {
   display: block;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 5px;
   line-height: 1.7;
 }
@@ -1029,20 +1029,20 @@ details[open] > summary .plus {
   display: flex;
   gap: 14px;
   align-items: center;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
   cursor: pointer;
   list-style: none;
   line-height: 1.8;
 }
 .learn-detail p {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.9;
   margin-top: 17px;
   max-width: 800px;
 }
 .learn-detail code {
-  font-size: 11px;
+  font-size: 12px;
   display: block;
   padding: 15px;
   border: 1px solid var(--line);
@@ -1051,7 +1051,7 @@ details[open] > summary .plus {
   overflow-wrap: anywhere;
 }
 .lesson-number {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--subtle);
 }
 .glossary {
@@ -1065,7 +1065,7 @@ details[open] > summary .plus {
   padding: 12px 0;
 }
 .glossary dt {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 .glossary dd {
@@ -1105,13 +1105,13 @@ details[open] > summary .plus {
   margin-top: 14px;
 }
 .source-register .source-line {
-  font-size: 11px;
+  font-size: 12px;
 }
 .source-register .data-status {
-  font-size: 10px;
+  font-size: 12px;
 }
 .source-register .method-details {
-  font-size: 11px;
+  font-size: 12px;
 }
 .notice {
   background: #f4d1920b;
@@ -1125,7 +1125,7 @@ details[open] > summary .plus {
   background: #f4d19213;
 }
 .refresh-notice {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   border-left: 2px solid var(--mint);
   padding: 6px 15px;
@@ -1137,7 +1137,7 @@ details[open] > summary .plus {
   justify-content: space-between;
   gap: 20px;
   align-items: center;
-  font-size: 9px;
+  font-size: 12px;
   color: var(--subtle);
 }
 .site-footer b {
@@ -1149,10 +1149,10 @@ details[open] > summary .plus {
 .site-footer span {
   display: block;
   margin-top: 5px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .site-footer p {
-  font-size: 9px;
+  font-size: 12px;
   max-width: 380px;
 }
 .site-footer a {
@@ -1189,7 +1189,7 @@ details[open] > summary .plus {
 }
 .loading-screen small {
   color: var(--subtle);
-  font-size: 11px;
+  font-size: 12px;
 }
 .spinning {
   animation: spin 1s linear infinite;
@@ -1308,7 +1308,7 @@ details[open] > summary .plus {
     padding: 20px 17px;
   }
   .token-card p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .three-column {
     gap: 12px;
@@ -1360,7 +1360,7 @@ details[open] > summary .plus {
     line-height: 1.1;
   }
   .mobile-brand small {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 2.6px;
     display: block;
     color: var(--muted);
@@ -1373,7 +1373,7 @@ details[open] > summary .plus {
     gap: 14px;
   }
   .public-status {
-    font-size: 9px;
+    font-size: 12px;
   }
   .refresh-button {
     padding: 8px;
@@ -1392,7 +1392,7 @@ details[open] > summary .plus {
     scrollbar-width: none;
   }
   .mobile-nav a {
-    font-size: 11px;
+    font-size: 12px;
     padding: 15px 0;
     color: var(--muted);
     border-bottom: 2px solid transparent;
@@ -1423,10 +1423,10 @@ details[open] > summary .plus {
     line-height: 1.8;
   }
   .hero-link {
-    font-size: 10px;
+    font-size: 12px;
   }
   .hero .eyebrow {
-    font-size: 8px;
+    font-size: 12px;
     letter-spacing: 1.4px;
   }
   .headline-grid {
@@ -1444,22 +1444,22 @@ details[open] > summary .plus {
     min-height: 40px;
   }
   .metric-label {
-    font-size: 11px;
+    font-size: 12px;
   }
   .metric-detail {
-    font-size: 10px;
+    font-size: 12px;
   }
   .source-line {
-    font-size: 10px;
+    font-size: 12px;
   }
   .observation {
-    font-size: 9px;
+    font-size: 12px;
   }
   .data-status {
-    font-size: 9px;
+    font-size: 12px;
   }
   .method-details summary {
-    font-size: 10px;
+    font-size: 12px;
   }
   .section-heading h2 {
     font-size: 21px;
@@ -1469,14 +1469,14 @@ details[open] > summary .plus {
   }
   .range-toolbar {
     gap: 10px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .range-toolbar button {
     padding: 6px 10px;
     min-height: 32px;
   }
   .range-toolbar > span {
-    font-size: 10px;
+    font-size: 12px;
     max-width: 70px;
   }
   .range-toolbar > div {
@@ -1504,14 +1504,14 @@ details[open] > summary .plus {
     top: 28px;
   }
   .token-top span {
-    font-size: 10px;
+    font-size: 12px;
   }
   .token-card h3 {
     margin: 0 0 14px;
     font-size: 25px;
   }
   .token-card p {
-    font-size: 13px;
+    font-size: 14px;
   }
   .page-intro {
     padding: 13px 0 8px;
@@ -1520,7 +1520,7 @@ details[open] > summary .plus {
     font-size: 38px;
   }
   .page-intro > p:last-child {
-    font-size: 13px;
+    font-size: 14px;
   }
   .plain-summary {
     padding: 18px;
@@ -1555,7 +1555,7 @@ details[open] > summary .plus {
     gap: 10px;
   }
   .calculator-fields input {
-    font-size: 13px;
+    font-size: 14px;
     padding: 11px 8px;
   }
   .site-footer {
@@ -1648,7 +1648,7 @@ details[open] > summary .plus {
 .observation,
 .data-status,
 .method-details summary {
-  font-size: 11px;
+  font-size: 12px;
 }
 .method-details p,
 .metric-detail {
@@ -1683,7 +1683,7 @@ details[open] > summary .plus {
     font-size: 26px;
   }
   .overview-intro > p:not(.eyebrow) {
-    font-size: 13px;
+    font-size: 14px;
   }
   .headline-grid .metric-card:last-child {
     grid-column: auto;
@@ -1709,13 +1709,13 @@ details[open] > summary .plus {
   }
   .range-toolbar small {
     display: block;
-    font-size: 11px;
+    font-size: 12px;
   }
   .source-line,
   .observation,
   .data-status,
   .method-details summary {
-    font-size: 11px;
+    font-size: 12px;
   }
 }
 
@@ -1773,4 +1773,27 @@ details[open] > summary .plus {
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Keep explanatory copy comfortable to read; metadata stays at least 12px. */
+small {
+  font-size: 12px;
+}
+.metric-explanation,
+.panel-description,
+.plain-summary h3,
+.plain-summary p,
+.token-card p,
+.ecosystem-row p,
+.unavailable p,
+.explain-steps p,
+.risk-card b,
+.risk-card > p,
+.glossary dd,
+.status-guide p,
+.source-register p {
+  font-size: 14px;
+}
+.chart-footer .source-line {
+  flex-wrap: wrap;
 }
