@@ -1,202 +1,189 @@
 "use client";
-
-import Link from "next/link";
-import { ArrowDownRight, ArrowUpRight, ExternalLink } from "lucide-react";
-import { CumulativeFlowChart, FlowChart } from "@/components/charts";
-import { DataBadge, Panel } from "@/components/primitives";
-import { formatDate, formatMoney, formatSignedMoney } from "@/lib/format";
-import { RANGE_OPTIONS, type RangeKey } from "@/lib/view-state";
 import type { DashboardSnapshot } from "@/lib/types";
-
-const assetColors: Record<string, string> = {
-  USDT: "#58c8a0",
-  USDC: "#64a9ff",
-  stETH: "#a889ff",
-  other: "#8b969a",
-};
-
+import { dailyChanges, supplyDelta, type RangeKey } from "@/lib/metrics";
+import { formatCompact, formatSignedMoney } from "@/lib/format";
+import { HistoryPanel } from "./history-panel";
+import { MetricCard, Panel, SourceLine, Unavailable } from "./primitives";
 export default function TapeView({
   data,
   range,
-  onRangeChange,
 }: {
   data: DashboardSnapshot;
   range: RangeKey;
-  onRangeChange: (range: RangeKey) => void;
 }) {
-  const totalMints = data.collateralBreakdown.reduce((sum, item) => sum + item.minted, 0);
-  const totalRedeems = data.collateralBreakdown.reduce((sum, item) => sum + item.redeemed, 0);
-  const topShare = data.topMinters.reduce((sum, item) => sum + item.share, 0);
-  const visibleTransactions = data.transactions.slice(0, 18);
-
+  const latest = data.supplyHistory.at(-1);
+  const changes = dailyChanges(data.supplyHistory);
+  const covered = data.chains.reduce((sum, chain) => sum + chain.supply, 0);
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">PRIMARY MARKET</div>
-          <h1>The tape</h1>
-          <p>Gross mints and redeems stay separate; net is the signed difference between them.</p>
-        </div>
-        <DataBadge status={data.sources.flows.status} label="SIMULATED TAPE" />
+      <div className="page-intro">
+        <p className="eyebrow">THE ORIGINAL FLOW LAB, EXPLAINED</p>
+        <h1>Follow the dollars.</h1>
+        <p>
+          Is the amount of USDe growing or shrinking? Start with supply. Then
+          understand how dollars are created and redeemed.
+        </p>
       </div>
-      <div className="page-toolbar">
-        <div className="segmented range-control" aria-label="Tape time range">
-          {RANGE_OPTIONS.map((option) => (
-            <button
-              key={option.key}
-              type="button"
-              className={range === option.key ? "selected" : ""}
-              onClick={() => onRangeChange(option.key)}
-              aria-pressed={range === option.key}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-        <p>Daily values · {data.flows.length.toLocaleString()} simulated days</p>
+      <div className="three-column">
+        {[1, 7, 30].map((days) => {
+          const delta = supplyDelta(data.supplyHistory, days);
+          return (
+            <MetricCard
+              key={days}
+              label={`Supply change · ${days === 1 ? "1 day" : days + " days"}`}
+              value={delta === null ? "Unavailable" : formatSignedMoney(delta)}
+              detail={`Window ends ${latest?.date ?? "when observations are available"}`}
+              explanation="Difference between two daily observations, valued at the $1 target."
+              metric={{
+                ...data.metrics.supply,
+                value: delta,
+                status:
+                  delta === null ? "unavailable" : data.metrics.supply.status,
+                methodology: `Supply on the latest date minus supply exactly ${days} calendar days earlier.`,
+              }}
+            />
+          );
+        })}
       </div>
-
-      <div className="tape-summary-grid">
-        <div><span>30D MINTS</span><b className="mint-text">{formatMoney(totalMints)}</b></div>
-        <div><span>30D REDEEMS</span><b className="redeem-text">{formatMoney(totalRedeems)}</b></div>
-        <div><span>30D NET</span><b>{formatSignedMoney(totalMints - totalRedeems)}</b></div>
-        <div><span>TOP 5 MINTERS SHARE</span><b>{(topShare * 100).toFixed(1)}%</b></div>
-      </div>
-
-      <div className="content-grid two-up">
-        <Panel title="Mints and redeems by day" eyebrow="GROSS PRIMARY-MARKET FLOW">
-          <div className="panel-source-line">
-            <span>Positive bars mint · negative bars redeem · white line is net</span>
-            <DataBadge status="simulated" />
-          </div>
-          <FlowChart data={data.flows} range={range} height={300} />
-          <div className="chart-legend">
-            <span><i className="legend-block mint-bg" />Mints</span>
-            <span><i className="legend-block redeem-bg" />Redeems</span>
-            <span><i className="legend-line net-line" />Net</span>
-          </div>
-        </Panel>
-        <Panel title="Cumulative net minted" eyebrow="SUPPLY CHANGE SINCE FIRST DATA POINT">
-          <div className="panel-source-line">
-            <span>Net equals mints less redeems each day.</span>
-            <DataBadge status="simulated" />
-          </div>
-          <CumulativeFlowChart data={data.flows} range={range} height={300} />
-        </Panel>
-      </div>
-
-      <div className="content-grid two-up">
-        <Panel title="Collateral mix" eyebrow="30D MINT / REDEEM VALUE">
-          <div className="collateral-legend">
-            {data.collateralBreakdown.map((item) => (
-              <span key={item.asset}>
-                <i style={{ background: assetColors[item.asset] }} />
-                {item.asset}
-              </span>
-            ))}
-          </div>
-          <div className="asset-flow-row">
-            <span className="asset-flow-label mint-text"><ArrowUpRight size={13} /> Mint</span>
-            <div className="asset-stack">
-              {data.collateralBreakdown.map((item) => (
-                <span
-                  key={item.asset}
-                  style={{
-                    width: (totalMints ? item.minted / totalMints : 0) * 100 + "%",
-                    background: assetColors[item.asset],
-                  }}
-                  title={item.asset + " mints " + formatMoney(item.minted)}
-                />
-              ))}
-            </div>
-            <b>{formatMoney(totalMints)}</b>
-          </div>
-          <div className="asset-flow-row">
-            <span className="asset-flow-label redeem-text"><ArrowDownRight size={13} /> Redeem</span>
-            <div className="asset-stack">
-              {data.collateralBreakdown.map((item) => (
-                <span
-                  key={item.asset}
-                  style={{
-                    width: (totalRedeems ? item.redeemed / totalRedeems : 0) * 100 + "%",
-                    background: assetColors[item.asset],
-                  }}
-                  title={item.asset + " redeems " + formatMoney(item.redeemed)}
-                />
-              ))}
-            </div>
-            <b>{formatMoney(totalRedeems)}</b>
-          </div>
-          <div className="asset-values">
-            {data.collateralBreakdown.map((item) => (
-              <div key={item.asset}>
-                <span><i style={{ background: assetColors[item.asset] }} />{item.asset}</span>
-                <b className="mint-text">{formatMoney(item.minted)}</b>
-                <b className="redeem-text">{formatMoney(item.redeemed)}</b>
-              </div>
-            ))}
-          </div>
-          <p className="small-note">Collaterals are an illustrative mix until primary-market logs are connected.</p>
-        </Panel>
-
-        <Panel title="Whitelisted minter concentration" eyebrow="TOP ACCOUNT SHARE · 30D FLOW">
-          <div className="concentration-total">
-            <strong>{(topShare * 100).toFixed(1)}%</strong>
-            <span>of simulated 30d gross flow attributed to the top five accounts</span>
-          </div>
-          <div className="concentration-list">
-            {data.topMinters.map((minter, index) => (
-              <div className="concentration-row" key={minter.account}>
-                <span className="concentration-rank">{String(index + 1).padStart(2, "0")}</span>
-                <code>{minter.account}</code>
-                <div className="concentration-bar"><i style={{ width: minter.share / data.topMinters[0].share * 100 + "%" }} /></div>
-                <b>{(minter.share * 100).toFixed(1)}%</b>
-              </div>
-            ))}
-          </div>
-          <p className="small-note">
-            Account identities and shares are generated placeholders. They are not real whitelist or wallet data.
-          </p>
-        </Panel>
-      </div>
-
+      <HistoryPanel
+        title="USDe supply over time"
+        description="The observed global supply, valued at the $1 target. Bridge balances are not added to this total."
+        points={data.supplyHistory}
+        metric={data.metrics.supply}
+        range={range}
+        kind="supply"
+      />
+      <HistoryPanel
+        title="What changed each day?"
+        description="Daily supply differences. A bar above zero means supply grew; below zero means it shrank. Gaps are left unfilled."
+        points={changes}
+        metric={{
+          ...data.metrics.supply,
+          methodology:
+            "Differences between consecutive calendar-day supply observations. Missing days are excluded.",
+        }}
+        range={range}
+        kind="change"
+      />
       <Panel
-        title="Recent mint / redeem observations"
-        eyebrow="TRANSACTION LOOKUP"
-        action={<span className="panel-meta">{visibleTransactions.length} sample rows</span>}
+        title="Three things that sound similar"
+        eyebrow="BUT MEASURE DIFFERENT ACTIVITY"
       >
-        <div className="panel-source-line">
-          <span>Address and transaction IDs are placeholders in demo mode.</span>
-          <Link className="panel-link" href="/methodology">Source notes <ExternalLink size={12} /></Link>
+        <div className="explain-steps">
+          <article>
+            <span>01</span>
+            <h3>USDe created</h3>
+            <p>
+              Approved counterparties provide backing assets and receive newly
+              issued USDe. This is called minting.
+            </p>
+          </article>
+          <article>
+            <span>02</span>
+            <h3>USDe redeemed</h3>
+            <p>
+              Approved counterparties return USDe for backing assets. These USDe
+              tokens are removed from circulation.
+            </p>
+          </article>
+          <article>
+            <span>03</span>
+            <h3>USDe traded</h3>
+            <p>
+              People buy and sell existing USDe on exchanges. Trading volume
+              alone does not tell us how much USDe was created.
+            </p>
+          </article>
         </div>
-        <div className="table-scroll">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Time (UTC)</th>
-                <th>Side</th>
-                <th>Account</th>
-                <th className="numeric">USDe</th>
-                <th>Collateral</th>
-                <th className="numeric">Collateral USD</th>
-                <th>Tx hash</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleTransactions.map((tx, index) => (
-                <tr key={tx.ts + index}>
-                  <td className="mono">{formatDate(tx.ts.slice(0, 10))} {tx.ts.slice(11, 16)}</td>
-                  <td><span className={"side-pill " + tx.side}>{tx.side}</span></td>
-                  <td><code className="table-address">{tx.account}</code></td>
-                  <td className="numeric mono">{formatMoney(tx.usde)}</td>
-                  <td>{tx.asset}</td>
-                  <td className="numeric mono">{formatMoney(tx.assetUsd)}</td>
-                  <td><span className="simulated-hash">sample · no on-chain hash</span></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <a
+          className="text-link"
+          href="https://docs.ethena.fi/video-guides/how-to-buy-usde"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Read Ethena’s mint and redemption explanation ↗
+        </a>
+      </Panel>
+      <div className="two-column">
+        <Panel
+          title="USDe created and redeemed"
+          description="Verified gross flow totals"
+        >
+          <Unavailable
+            title="Primary-market events are not connected"
+            href="https://docs.ethena.fi/technical-design/overview"
+          >
+            A measured mint/redemption tape needs verified contract events and
+            an indexer. Supply changes above cannot tell us the separate gross
+            totals. No transaction identities or hashes are invented.
+          </Unavailable>
+          <SourceLine metric={data.metrics.minted} />
+        </Panel>
+        <Panel
+          title="Where is USDe circulating?"
+          description="Network samples aligned to the latest global supply date"
+        >
+          {data.chains.length ? (
+            <>
+              <div className="chain-list">
+                {data.chains.map((chain) => (
+                  <div className="chain-row" key={chain.chain}>
+                    <div>
+                      <span>{chain.chain}</span>
+                      <b>{formatCompact(chain.supply)} USDe</b>
+                    </div>
+                    <div className="chain-track">
+                      <span
+                        style={{
+                          width: `${covered > 0 ? (chain.supply / covered) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="small-copy">
+                Shares are relative to the covered network subtotal (
+                {formatCompact(covered)} USDe), which may differ from global
+                supply because of provider bridge accounting and coverage.
+              </p>
+              <SourceLine metric={data.metrics.supply} />
+            </>
+          ) : (
+            <Unavailable title="No aligned network observations">
+              No verified network samples are available for the global
+              observation date.
+            </Unavailable>
+          )}
+        </Panel>
+      </div>
+      <Panel
+        title="What can influence demand?"
+        eyebrow="OPTIONAL ADVANCED CONTEXT"
+      >
+        <p className="body-copy">
+          Yield, market price, hedging costs, and borrowing rates can affect
+          incentives to hold or redeem USDe. They do not establish the cause of
+          a supply move.
+        </p>
+        <details className="learn-detail">
+          <summary>What happened to ForceScore?</summary>
+          <p>
+            The original Flow Lab combined standardized yield, funding,
+            borrowing spread, peg and redemption-stress inputs into a
+            descriptive index. Its inputs were simulated and its predictive
+            value was not validated. It is not displayed as a current signal or
+            a safety rating.
+          </p>
+          <code>
+            0.30 × z(carry) + 0.25 × z(funding) + 0.25 × z(loop spread) + 0.15 ×
+            z(peg less mint fee) − 0.05 × z(redemption stress)
+          </code>
+          <p>
+            A future version needs verified inputs, documented units and a
+            separate evaluation before numerical results are useful.
+          </p>
+        </details>
       </Panel>
     </>
   );

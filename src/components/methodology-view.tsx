@@ -1,82 +1,138 @@
-"use client";
-
-import { ArrowDownRight, ArrowUpRight, Info } from "lucide-react";
-import { DataBadge, Panel } from "@/components/primitives";
-import { formatMoney } from "@/lib/format";
-import type { DashboardSnapshot } from "@/lib/types";
-
-const paragraphs = [
-  "Arthur Hayes’s “Dust on Crust” described a synthetic dollar built from long spot exposure and a short perpetual-futures hedge. The hedge is intended to offset the spot price move while funding and basis can provide a return.",
-  "Guy Young and Ethena shipped this structure as USDe. Its economics depend on collateral, hedge venues, funding, liquidity and operational constraints, so no single yield number explains supply by itself.",
-  "Only primary-market minting and redemption change USDe supply. Secondary-market trading changes the price and creates an arbitrage signal, but it is not itself a supply event.",
-  "A premium can reward an eligible counterparty for minting USDe and selling it. A discount can reward buying USDe and redeeming it, after fees, spreads, capacity and whitelist constraints.",
-  "The supplied research brief identifies Pendle and Aave leverage loops as amplifiers of 2025 growth. The loop panel here is synthetic until protocol positions and borrow rates are connected.",
-  "The brief also labels October 2025 and April 2026 as redemption regimes. Their dates and causal attribution remain source-required annotations in this demo.",
-  "ForceScore is descriptive: it combines five trailing z-scores with fixed weights. It is not a forecast, causal model or estimate with proven R².",
-  "A backing ratio near 100% does not mean supply cannot fall. It means reported assets may cover liabilities; counterparties can still redeem, and backing composition, liquidity and settlement matter.",
-  "The deterministic demo archive is designed to reproduce the requested 2024–2026 shape. Values labeled Demo or Simulated are not observed market data or on-chain transactions.",
-];
-
+import type { DashboardSnapshot, MetricKey } from "@/lib/types";
+import { Panel, SourceLine } from "./primitives";
+const names: Record<MetricKey, string> = {
+  supply: "USDe supply",
+  price: "USDe price",
+  supplyChange7d: "Seven-day supply change",
+  yield: "sUSDe estimated APY",
+  backing: "Reported backing",
+  reserve: "Reported reserve",
+  enaPrice: "ENA price",
+  stakingShare: "Staking participation",
+  minted: "USDe created",
+  redeemed: "USDe redeemed",
+};
 export default function MethodologyView({ data }: { data: DashboardSnapshot }) {
-  const score = data.forces[data.forces.length - 1].forceScore;
   return (
     <>
-      <div className="page-heading">
-        <div>
-          <div className="eyebrow">DEFINITIONS · SOURCES · LIMITS</div>
-          <h1>Methodology</h1>
-          <p>What supply means, how the forces are interpreted, and what this first build can verify.</p>
-        </div>
-        <DataBadge status={data.mode === "partial-live" ? "live" : "simulated"} label={data.mode === "partial-live" ? "SUPPLY PARTIAL-LIVE" : "DEMO ARCHIVE"} />
+      <div className="page-intro">
+        <p className="eyebrow">EVERY NUMBER HAS A STORY</p>
+        <h1>
+          Sources, dates,
+          <br />
+          and honest limits.
+        </h1>
+        <p>
+          This is an independent dashboard. Data comes from public providers;
+          explanations link to official Ethena publications. No missing
+          production metric is replaced with a demo value.
+        </p>
       </div>
-
-      <Panel title="From hedge economics to USDe supply" eyebrow="THE MODEL IN PLAIN ENGLISH">
-        <div className="method-copy">
-          {paragraphs.map((paragraph, index) => (
-            <p key={index}><span>{String(index + 1).padStart(2, "0")}</span>{paragraph}</p>
+      <Panel title="How to read the data labels">
+        <div className="status-guide">
+          {[
+            [
+              "current",
+              "Current",
+              "The observation is within its declared freshness window. It is not a claim of tick-by-tick data.",
+            ],
+            [
+              "stale",
+              "Delayed / last verified",
+              "The observation is old or retained after a failed refresh. Its original observation date stays visible.",
+            ],
+            [
+              "unavailable",
+              "Unavailable",
+              "No verified value or connected source is available. Zero would be misleading.",
+            ],
+            [
+              "demo",
+              "Demo",
+              "Synthetic values for an explicitly separate demonstration. They are not market observations.",
+            ],
+          ].map(([status, title, description]) => (
+            <div key={status}>
+              <span className={`data-status ${status}`}>{title}</span>
+              <p>{description}</p>
+            </div>
           ))}
         </div>
       </Panel>
-
-      <div className="content-grid two-up">
-        <Panel title="ForceScore inputs" eyebrow="FIXED DEFAULT WEIGHTS">
-          <div className="formula-table">
-            <div><code>+ 0.30</code><b>sUSDe APY − T-bill</b><span>Carry advantage, percentage points</span></div>
-            <div><code>+ 0.25</code><b>ETH funding, 7d average</b><span>Annualized rate; positive generally pays a short hedge</span></div>
-            <div><code>+ 0.25</code><b>Loop spread</b><span>sUSDe APY or PT implied yield less borrow APR</span></div>
-            <div><code>+ 0.15</code><b>Peg premium − mint fee</b><span>Estimated mint-side arbitrage edge, basis points</span></div>
-            <div><code>− 0.05</code><b>Redemption stress</b><span>Fee and liquidity-stress proxy</span></div>
-          </div>
-          <p className="small-note">Each component is standardized using its trailing 90 observations. The 90-day window is an implementation choice for the demo, not an empirically optimized parameter.</p>
-          <div className="formula-output"><span>Current demo score</span><strong>{score.toFixed(2)}</strong></div>
+      <Panel title="Metric-by-metric coverage">
+        <div className="source-register">
+          {(Object.keys(names) as MetricKey[]).map((key) => (
+            <article key={key}>
+              <h3>{names[key]}</h3>
+              <p>{data.metrics[key].methodology}</p>
+              <p className="small-copy">
+                {data.metrics[key].coverage} · Unit: {data.metrics[key].unit}
+              </p>
+              <SourceLine metric={data.metrics[key]} expanded />
+            </article>
+          ))}
+          <article>
+            <h3>Daily USDe price history</h3>
+            <p>{data.priceHistoryMeta.methodology}</p>
+            <SourceLine metric={data.priceHistoryMeta} expanded />
+          </article>
+        </div>
+      </Panel>
+      <div className="two-column">
+        <Panel title="What the charts measure">
+          <ul className="simple-list">
+            <li>
+              Supply uses the provider’s global series. Chain samples are
+              aligned to its latest day and may have different bridge
+              accounting.
+            </li>
+            <li>
+              Supply changes compare exact calendar dates. Missing baseline
+              dates produce unavailable values.
+            </li>
+            <li>
+              Daily bars require consecutive calendar dates; gaps are excluded.
+            </li>
+            <li>
+              The 24H chart filter selects daily observations one day apart. It
+              is not an intraday or rolling 24-hour tape.
+            </li>
+            <li>
+              Supply charts value USDe at its $1 target. Price charts measure a
+              separate market reference.
+            </li>
+          </ul>
         </Panel>
-        <Panel title="Observed vs simulated" eyebrow="DATA PROVENANCE">
-          <div className="provenance-list">
-            <div><DataBadge status={data.sources.supply.status} /><span><b>Supply history</b><small>{data.sources.supply.note}</small></span></div>
-            <div><DataBadge status={data.sources.flows.status} /><span><b>Primary-market tape</b><small>{data.sources.flows.note}</small></span></div>
-            <div><DataBadge status={data.sources.forces.status} /><span><b>Market force series</b><small>{data.sources.forces.note}</small></span></div>
-            <div><DataBadge status="simulated" /><span><b>Events and concentration</b><small>Calendar labels and account identities need a verified source.</small></span></div>
-          </div>
-          <div className="method-callout"><Info size={14} /><span>When a provider fails, the UI stays populated and marks the source stale. It never silently presents fallback values as live observations.</span></div>
+        <Panel title="How the yield estimate is made">
+          <p className="body-copy">
+            The inspected DeFiLlama adapter annualizes the latest reward
+            distribution assuming three distributions per day. It converts the
+            resulting APR to APY with weekly compounding. The series displays
+            these estimates, not a trailing realized vault return.
+          </p>
+          <a
+            className="text-link"
+            href="https://github.com/DefiLlama/yield-server/blob/master/src/adaptors/ethena-usde/index.js"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Inspect the provider’s calculation ↗
+          </a>
+          <p className="small-copy">
+            Methodology checked September 30, 2026. Provider logic and
+            distribution schedules can change.
+          </p>
         </Panel>
       </div>
-
-      <Panel title="Source adapters" eyebrow="CURRENT COVERAGE">
-        <div className="source-adapter-grid">
-          <div><span className="source-adapter-index">01</span><b>DeFiLlama stablecoins API</b><small>USDe catalog and chain-history supply. Enabled when USDE_DATA_PROVIDER is not mock.</small></div>
-          <div><span className="source-adapter-index">02</span><b>Ethena Mint / Redeem or Dune</b><small>Not yet connected. Wire a Dune query or indexed event adapter to replace the demo tape.</small></div>
-          <div><span className="source-adapter-index">03</span><b>Yield, funding, peg and loop</b><small>Panels have a provider boundary; live source adapters remain to be connected per metric.</small></div>
-        </div>
-        <div className="method-bottom-line">
-          <div className="method-equation">
-            <span className="mint-text"><ArrowUpRight size={13} /> Mints</span>
-            <span>−</span>
-            <span className="redeem-text"><ArrowDownRight size={13} /> Redeems</span>
-            <span>=</span>
-            <b>Net supply change</b>
-          </div>
-          <span>Circulating supply now {formatMoney(data.currentSupply)}</span>
-        </div>
+      <Panel title="Refresh and persistence">
+        <p className="body-copy">
+          The browser checks every five minutes while visible. Upstream requests
+          are cached for five minutes; shared API responses may be cached
+          briefly. None of these intervals changes an observation’s original
+          date. Optional database storage preserves verified daily snapshots.
+          Without storage, provider outages show unavailable data on a new
+          visit; an open page can retain its last verified readings.
+        </p>
       </Panel>
     </>
   );

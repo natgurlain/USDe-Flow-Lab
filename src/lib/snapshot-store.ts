@@ -1,67 +1,75 @@
 import postgres from "postgres";
-import type { DashboardSnapshot } from "@/lib/types";
+import type { DashboardSnapshot } from "./types";
 
-export async function persistDailySnapshot(snapshot: DashboardSnapshot) {
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString) return false;
-
-  const sql = postgres(connectionString, {
+function connectionString() {
+  // Preview never falls through to the production database.
+  return process.env.VERCEL_ENV === "preview"
+    ? process.env.PREVIEW_DATABASE_URL
+    : process.env.DATABASE_URL;
+}
+export function persistenceEnabled() {
+  return Boolean(connectionString());
+}
+export async function loadLatestSnapshot(): Promise<DashboardSnapshot | null> {
+  const url = connectionString();
+  if (!url) return null;
+  const sql = postgres(url, {
     max: 1,
+    connect_timeout: 3,
     idle_timeout: 5,
-    connect_timeout: 10,
     prepare: false,
+    connection: { statement_timeout: 3000 },
   });
-
   try {
-    const supply = snapshot.supplyPoints[snapshot.supplyPoints.length - 1];
-    const flow = snapshot.flows[snapshot.flows.length - 1];
-    const force = snapshot.forces[snapshot.forces.length - 1];
-    const liveFlow = snapshot.sources.flows.status === "live";
-    const liveForces = snapshot.sources.forces.status === "live";
-
-    await sql.unsafe(
-      "CREATE TABLE IF NOT EXISTS dashboard_daily (" +
-        "day date PRIMARY KEY, " +
-        "supply_usd double precision NOT NULL, " +
-        "minted_usde double precision, redeemed_usde double precision, net_usde double precision, " +
-        "susde_apy double precision, tbill_apy double precision, eth_funding_7d double precision, " +
-        "loop_spread_bps double precision, peg_bps double precision, force_score double precision, " +
-        "supply_source text NOT NULL, flow_source text, force_source text, " +
-        "updated_at timestamptz NOT NULL DEFAULT now())",
-    );
-    await sql.unsafe(
-      "INSERT INTO dashboard_daily (" +
-        "day, supply_usd, minted_usde, redeemed_usde, net_usde, susde_apy, tbill_apy, " +
-        "eth_funding_7d, loop_spread_bps, peg_bps, force_score, supply_source, flow_source, " +
-        "force_source, updated_at) " +
-        "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now()) " +
-        "ON CONFLICT (day) DO UPDATE SET " +
-        "supply_usd = EXCLUDED.supply_usd, minted_usde = EXCLUDED.minted_usde, " +
-        "redeemed_usde = EXCLUDED.redeemed_usde, net_usde = EXCLUDED.net_usde, " +
-        "susde_apy = EXCLUDED.susde_apy, tbill_apy = EXCLUDED.tbill_apy, " +
-        "eth_funding_7d = EXCLUDED.eth_funding_7d, loop_spread_bps = EXCLUDED.loop_spread_bps, " +
-        "peg_bps = EXCLUDED.peg_bps, force_score = EXCLUDED.force_score, " +
-        "supply_source = EXCLUDED.supply_source, flow_source = EXCLUDED.flow_source, " +
-        "force_source = EXCLUDED.force_source, updated_at = now()",
-      [
-        supply.date,
-        supply.supply,
-        liveFlow ? flow.minted : null,
-        liveFlow ? flow.redeemed : null,
-        liveFlow ? flow.net : null,
-        liveForces ? force.susdeApy : null,
-        liveForces ? force.tBill : null,
-        liveForces ? force.ethFunding7d : null,
-        liveForces ? force.loopSpread : null,
-        liveForces ? force.pegBps : null,
-        liveForces ? force.forceScore : null,
-        snapshot.sources.supply.name,
-        liveFlow ? snapshot.sources.flows.name : null,
-        liveForces ? snapshot.sources.forces.name : null,
-      ],
-    );
+    const rows =
+      await sql`SELECT snapshot FROM ethena_snapshots ORDER BY day DESC LIMIT 1`;
+    const value = rows[0]?.snapshot as DashboardSnapshot | undefined;
+    if (
+      !value ||
+      value.version !== 2 ||
+      value.mode !== "production" ||
+      !value.metrics ||
+      !Array.isArray(value.supplyHistory)
+    )
+      return null;
+    return value;
+  } catch {
+    return null;
+  } finally {
+    await sql.end({ timeout: 1 });
+  }
+}
+export async function persistDailySnapshot(snapshot: DashboardSnapshot) {
+  const url = connectionString();
+  if (!url || snapshot.mode !== "production") return false;
+  // Never persist demo or retained stale data as new observations.
+  if (
+    !Object.values(snapshot.metrics).some(
+      (metric) => metric.status === "current" && metric.value !== null,
+    )
+  )
+    return false;
+  const sql = postgres(url, {
+    max: 1,
+    connect_timeout: 5,
+    idle_timeout: 5,
+    prepare: false,
+    connection: { statement_timeout: 5000 },
+  });
+  try {
+    const day = snapshot.fetchedAt.slice(0, 10);
+    await sql.begin(async (transaction) => {
+      // Serialize cron runs so a slower partial run cannot erase newer values.
+      await transaction`SELECT pg_advisory_xact_lock(hashtext('ethena_snapshots_refresh'))`;
+      const rows =
+        await transaction`SELECT snapshot FROM ethena_snapshots ORDER BY day DESC LIMIT 1`;
+      const old = rows[0]?.snapshot as DashboardSnapshot | undefined;
+      const { retainVerified } = await import("./metrics");
+      const stored = retainVerified(snapshot, old ?? null);
+      await transaction`INSERT INTO ethena_snapshots (day, snapshot) VALUES (${day}::date, ${transaction.json(JSON.parse(JSON.stringify(stored)))}) ON CONFLICT (day) DO UPDATE SET snapshot = EXCLUDED.snapshot, updated_at = now()`;
+    });
     return true;
   } finally {
-    await sql.end({ timeout: 5 });
+    await sql.end({ timeout: 1 });
   }
 }

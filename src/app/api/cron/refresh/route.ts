@@ -1,37 +1,36 @@
-import { createDataProvider } from "@/lib/data-provider";
-import { persistDailySnapshot } from "@/lib/snapshot-store";
-
+import { getProviderSnapshot } from "@/lib/data-provider";
+import { persistDailySnapshot, persistenceEnabled } from "@/lib/snapshot-store";
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
-  if (!secret || !process.env.DATABASE_URL) {
+  if (!secret)
     return Response.json({
       status: "disabled",
-      reason: "Set CRON_SECRET and DATABASE_URL to enable scheduled persistence.",
+      reason: "CRON_SECRET is not configured.",
     });
-  }
-  if (request.headers.get("authorization") !== "Bearer " + secret) {
+  if (request.headers.get("authorization") !== "Bearer " + secret)
     return Response.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+  if (!persistenceEnabled())
+    return Response.json({
+      status: "disabled",
+      reason: "Configure an isolated database and apply sql/schema.sql.",
+    });
   try {
-    const snapshot = await createDataProvider().getSnapshot();
-    if (snapshot.sources.supply.status !== "live") {
-      return Response.json(
-        { status: "skipped", reason: "No live supply observation was available." },
-        { status: 503 },
-      );
-    }
+    const snapshot = await getProviderSnapshot();
     const stored = await persistDailySnapshot(snapshot);
     return Response.json({
       status: stored ? "stored" : "skipped",
-      day: snapshot.supplyPoints[snapshot.supplyPoints.length - 1].date,
-      source: snapshot.sources.supply.name,
-      note: "Non-live tape and force columns remain NULL in storage.",
+      day: snapshot.fetchedAt.slice(0, 10),
     });
   } catch {
-    return Response.json({ status: "error", message: "Snapshot refresh failed." }, { status: 500 });
+    return Response.json(
+      {
+        status: "error",
+        message:
+          "Snapshot storage failed. Check migration and database configuration.",
+      },
+      { status: 500 },
+    );
   }
 }

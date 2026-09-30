@@ -1,88 +1,129 @@
-# USDe Flow Lab
+# Ethena Explained
 
-USDe Flow Lab is a dark, mobile-first research workspace for comparing USDe circulating supply with the primary-market tape and the market forces that can change mint and redeem incentives.
+An independent, mobile-first Ethena dashboard for people who want to understand
+the dollars, yield, and risks before exploring the technical details.
 
-## What is in this first version
+## Views
 
-- An Overview that leads with the supply path, shows signed mint and redeem flow, and summarizes carry, perp funding, loop spread and peg conditions.
-- Tape, Forces, Events and Methodology pages with the same source labels and shared time-range state.
-- A deterministic daily demo archive from February 2024 through today. It reproduces the requested climb toward $14.8B in October 2025, a sharp decline, a second drop toward $3.9B in April 2026, and a recovery toward $4.9B.
-- A server-side DeFiLlama adapter for USDe circulating history and per-chain supply. It is enabled by default. If the source is unavailable, the route returns the demo snapshot with a stale label.
-- A provider boundary in src/lib/data-provider.ts. Tape, market forces, concentration, fee schedule, backing mix and event labels are still simulated and are explicitly marked as such.
-- A Postgres daily snapshot table and an optional Vercel Cron handler. The schema and route are present; persistent writes activate only when DATABASE_URL and CRON_SECRET are configured.
+- **Overview:** five headline readings, plain-English observations, supply and
+  daily price charts, USDe/sUSDe/ENA explanations, and a separate ecosystem panel.
+- **USDe Flow:** calendar-date supply comparisons, daily differences, aligned
+  network distribution, and an explanation of primary versus secondary activity.
+- **Yield:** sourced sUSDe annualized estimates, history, and an editable illustration.
+- **Backing & Risks:** official-report links, honest unavailable states, and six
+  plain-language risk explanations.
+- **Learn:** short answers and a glossary. **Sources & methods:** every metric's
+  calculation, coverage, unit, observation time, fetch time, and freshness window.
 
-The live adapter currently replaces supply history and chain distribution only. It does not yet make the mint/redeem tape or force attribution live. The Overview states this directly so real supply is not accidentally paired with simulated drivers as a causal explanation.
+Legacy `/tape`, `/forces`, `/events`, and `/methodology` links redirect to the
+corresponding new views while retaining valid time ranges.
 
-## Local setup
+## Real data and limitations
 
-Requirements: Node.js 20.9 or later and pnpm.
+Connected public feeds: global USDe daily supply, network distribution at matching
+sample dates, USDe reference price and daily price history, sUSDe estimated APY
+history, and ENA reference price. See [the source matrix](docs/source-matrix.md).
 
-~~~sh
+The sUSDe figure is **estimated**, not a realized trailing APY. The inspected
+DeFiLlama adapter annualizes the latest reward distribution assuming an eight-hour
+interval and weekly compounding. No assumed cooldown duration is displayed.
+
+Backing composition, reserve figures, custody concentration, gross primary-market
+events, realized vault returns, and staking participation are **not connected**.
+They show unavailable states and source links. A supply difference is never
+presented as measured gross mint/redemption activity. Historical event narratives
+and the mixed live/demo ForceScore have been removed from production readings.
+
+Providers fail independently. Production never falls back to synthetic numbers.
+An open page retains last verified readings as stale; a new visit can use optional
+database snapshots or show unavailable data. Retained observations keep their
+original dates. `USDE_DATA_PROVIDER=mock` explicitly enables a visibly labeled demo.
+
+## Local development and LAN review
+
+Node.js 22 and pnpm 9 are required. Vercel uses the tested Node.js 22 runtime.
+
+```sh
 pnpm install
 cp .env.example .env.local
-pnpm dev
-~~~
+pnpm dev --hostname 0.0.0.0
+```
 
-Open http://localhost:3000. Set USDE_DATA_PROVIDER=mock for a fully offline demo. Without that setting, the browser calls the same-origin dashboard route; that server route fetches DeFiLlama and uses a five-minute upstream cache. The browser never calls the data provider directly.
+Visit `http://localhost:3000` or `http://YOUR_LAN_IP:3000` from another device on
+that network. For a production-mode local review:
 
-## Environment variables
+```sh
+pnpm build
+pnpm start --hostname 0.0.0.0
+```
 
-| Variable | Required | Purpose |
-| --- | --- | --- |
-| USDE_DATA_PROVIDER | No | Use defillama by default, or mock for the deterministic offline dataset. |
-| DATABASE_URL | No | Postgres URL used by the scheduled daily snapshot writer. |
-| CRON_SECRET | No | Bearer secret required to run the scheduled snapshot writer. |
+The process needs outbound HTTPS access to the public providers. Provider outages
+leave a usable interface with unavailable readings. No API keys are required for
+the currently connected feeds. The calculator remains a hypothetical illustration
+and never initiates transactions.
 
-The dashboard works without a database. To enable scheduled persistence, create a Postgres database, apply sql/schema.sql, then configure DATABASE_URL and CRON_SECRET in Vercel for Production and Preview as appropriate. The daily cron runs at 05:00 UTC. It stores the live supply point and leaves non-live flow/force columns NULL rather than recording demo values as observations.
+## Verification
 
-## Routes and refresh behavior
+```sh
+pnpm test
+pnpm lint
+pnpm typecheck
+pnpm build
+```
 
-- GET /api/dashboard serves the provider result. DeFiLlama fetches revalidate after five minutes; the route response uses a short shared cache with stale-while-revalidate.
-- GET /api/cron/refresh is scheduled once per day by vercel.json. It is a no-op until both DATABASE_URL and CRON_SECRET exist, and then rejects requests without the matching Bearer token.
-- The browser refreshes the same-origin dashboard route every two minutes and keeps the last rendered snapshot if refresh fails.
+Tests exercise real TypeScript modules through the installed compiler. They cover
+calendar ranges, exact supply baselines, missing days, peg units, compounded yield,
+source validation, independent failures, original provenance retention, and demo
+isolation. Charts expose observations in a keyboard-accessible table.
 
-## Data tables
+## Caching and persistence
 
-The first persistent table is dashboard_daily, defined in sql/schema.sql:
+Normalized, validated provider results are cached server-side for five minutes.
+Raw global feeds exceed Next.js's 2 MB cache-entry limit, so they are fetched
+uncached inside the normalized cache wrapper. Their original acquisition times
+are stored alongside observations. The API has a short shared response cache.
+The browser checks every five minutes while visible; this does not create new
+observations or guarantee provider freshness.
 
-| Column | Meaning |
-| --- | --- |
-| day | UTC date and primary key |
-| supply_usd | Circulating USDe supply from the live supply provider |
-| minted_usde, redeemed_usde, net_usde | Nullable primary-market values; remain NULL until a live tape provider exists |
-| susde_apy, tbill_apy, eth_funding_7d, loop_spread_bps, peg_bps, force_score | Nullable force values; remain NULL until their live sources are connected |
-| supply_source, flow_source, force_source | Source names for values written on the row |
-| updated_at | Time the daily point was last upserted |
+Supply, daily price history and yield use a 36-hour freshness window. Current
+market reference prices use two hours. These are display thresholds, not risk
+thresholds. Charts end at the latest available sample; 24H selects daily samples
+one day apart and does not claim an intraday or rolling 24-hour tape.
 
-## Add a new force
+Persistence is optional. Apply `sql/schema.sql`, then set `DATABASE_URL` and
+`CRON_SECRET`. The new `ethena_snapshots` JSONB table preserves metric-level
+provenance and series; the legacy `dashboard_daily` table is left intact.
+Only the authenticated cron writes to storage. Repeated runs serialize through a
+transaction advisory lock and upsert the acquisition day. Missing values can
+retain previous verified readings with explicit stale status and original dates.
+No production snapshot can have demo mode.
 
-1. Add its typed values to ForcePoint in src/lib/types.ts.
-2. Generate deterministic values in src/lib/mock-data.ts and state the simulation assumptions beside the generator.
-3. Add the live adapter in src/lib/data-provider.ts. Keep secrets on the server, cache upstream requests there, and leave missing values explicitly stale or unavailable.
-4. Add the mint-side and redeem-side interpretation in src/components/primitives.tsx. Give the force a visible reading, a 90-day sparkline, and a one-sentence definition.
-5. Add the detail chart and its unit formatting in src/components/charts.tsx, then show it on the Forces page.
-6. If the value is persisted, add a nullable column to sql/schema.sql and to the snapshot writer. Never store simulated data in a live-source column.
+Preview deployments never fall back to the production database. Set an isolated
+`PREVIEW_DATABASE_URL` if preview persistence is desired. Secrets remain server-side.
+No migration is run automatically inside a public page request.
 
-## ForceScore
+## Vercel preparation
 
-The index uses trailing 90-observation z-scores and the fixed default weights:
+Import the repository as a Next.js project, use pnpm, and use the project root.
+Build command: `pnpm build`. Default production mode works without a database.
+For persistence, apply the schema and configure the variables above in their
+appropriate environments. The existing cron runs once daily at `0 5 * * *` UTC.
+Hobby schedules can run once daily and have approximate execution timing; verify
+current plan limits before increasing ingestion frequency:
+https://vercel.com/docs/cron-jobs/usage-and-pricing
 
-~~~text
-+ 0.30 × z(sUSDe APY − T-bill)
-+ 0.25 × z(ETH funding 7d)
-+ 0.25 × z(loop spread)
-+ 0.15 × z(peg premium − mint fee)
-− 0.05 × z(redemption stress)
-~~~
+Do not attempt large blockchain backfills inside page or cron requests. A future
+event indexer needs verified contracts, ABIs, bounded batches, durable checkpoints,
+reorg handling, idempotent event identifiers, and stated network coverage before
+gross mint/redemption data can be published.
 
-The page plots the score at day t against net flow from t+1 through t+7. The index is a transparent descriptive heuristic; it is not a forecast and has no proven R².
+**Production:** https://ethena-dashboard.vercel.app — Vercel project
+`ethena-dashboard` in `nat-4184s-projects`. Published after LAN review and explicit
+user approval. The production pages and data API were checked without authentication;
+all main pages returned HTTP 200 and the browser loaded the charts without errors.
 
-## Deploy to Vercel
-
-This is a standard Next.js App Router project. Import the repository in Vercel or deploy the project root with the Vercel connector. The production build requires no Ethena API key and no database. The public DeFiLlama adapter can fail independently without making the site blank.
-
-Configure DATABASE_URL and CRON_SECRET only when a Postgres database is ready. Until then, the scheduled route reports that persistence is disabled and the dashboard continues to use live DeFiLlama supply with visibly simulated tape and force panels.
-
-## Caveats
-
-The demo transactions, minter identities, collateral allocation, staking ratio, backing mix, fees, loop exposure, force histories and event labels are synthetic. The October 2025 and April 2026 annotations follow the supplied research brief and need primary-source verification. Secondary-market volume is not mint/redeem volume. This dashboard does not execute trades or mint/redeem USDe.
+The checkout is linked through `.vercel/project.json` (gitignored). This release
+was uploaded directly with the Vercel CLI. GitHub repository connection failed,
+so automatic deployment on Git pushes is not configured. Future releases can use
+`vercel deploy --prod --scope nat-4184s-projects` until repository access is repaired.
+Optional database persistence is not enabled or verified against a live database.

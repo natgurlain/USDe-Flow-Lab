@@ -1,151 +1,346 @@
-import { getMockSnapshot } from "@/lib/mock-data";
-import type { DashboardSnapshot, SupplyPoint } from "@/lib/types";
+import type {
+  DashboardSnapshot,
+  Metric,
+  MetricKey,
+  SeriesPoint,
+} from "./types";
+import { supplyDelta, withFreshness } from "./metrics";
+import { getMockSnapshot } from "./mock-data";
 
-export interface DataProvider {
-  getSnapshot(): Promise<DashboardSnapshot>;
+export const USDE_CONTRACT = "0x4c9edd5852cd905f086c759e8383e09bff1e68b3";
+export const SOURCES = {
+  supply: "https://stablecoins.llama.fi/stablecoin/146",
+  prices: "https://stablecoins.llama.fi/stablecoinprices",
+  price: `https://coins.llama.fi/prices/current/ethereum:${USDE_CONTRACT}`,
+  yield: "https://yields.llama.fi/chart/66985a81-9c51-46ca-9977-42b4fe7bc6df",
+  ena: "https://coins.llama.fi/prices/current/coingecko:ethena",
+  backing: "https://app.ethena.fi/dashboards/transparency",
+};
+export function emptyMetric(
+  unit: string,
+  sourceUrl: string,
+  methodology: string,
+  coverage: string,
+  maxAgeHours = 36,
+): Metric {
+  return {
+    value: null,
+    status: "unavailable",
+    source: sourceUrl.includes("llama.fi") ? "DeFiLlama" : "Ethena",
+    sourceUrl,
+    observedAt: null,
+    fetchedAt: null,
+    unit,
+    methodology,
+    coverage,
+    maxAgeHours,
+  };
 }
-
-type Stablecoin = {
-  id: string | number;
-  name: string;
-  symbol: string;
-  circulating?: { peggedUSD?: number };
-};
-
-type StablecoinCatalog =
-  | Stablecoin[]
-  | {
-      peggedAssets?: Stablecoin[];
-    };
-
-type ChainHistory = {
-  tokens?: Array<{
-    date?: number;
-    circulating?: { peggedUSD?: number };
-  }>;
-};
-
-type StablecoinHistory = {
-  chainBalances?: Record<string, ChainHistory>;
-};
-
-function toDailySupply(history: StablecoinHistory): SupplyPoint[] {
-  const totals = new Map<string, number>();
-  for (const chain of Object.values(history.chainBalances ?? {})) {
-    for (const sample of chain.tokens ?? []) {
-      if (!sample.date || !Number.isFinite(sample.circulating?.peggedUSD)) continue;
-      const date = new Date(sample.date * 1000).toISOString().slice(0, 10);
-      totals.set(date, (totals.get(date) ?? 0) + (sample.circulating?.peggedUSD ?? 0));
-    }
-  }
-  return [...totals.entries()]
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([date, supply]) => ({
-      date,
-      supply,
-      susdeSupply: 0,
-      stakingRatio: 0,
-    }));
+export function emptySnapshot(
+  now = new Date().toISOString(),
+): DashboardSnapshot {
+  const definitions: Record<MetricKey, Metric> = {
+    supply: emptyMetric(
+      "USDe",
+      SOURCES.supply,
+      "Global circulating USDe at the provider's daily timestamp. USDe units, valued at the $1 target.",
+      "Global supply; daily observations",
+    ),
+    price: emptyMetric(
+      "USD",
+      SOURCES.price,
+      "Aggregated secondary-market reference price; not an executable quote.",
+      "USDe reference price",
+      2,
+    ),
+    supplyChange7d: emptyMetric(
+      "USDe",
+      SOURCES.supply,
+      "Latest daily supply minus the observation exactly seven calendar days earlier.",
+      "Seven calendar days",
+    ),
+    yield: emptyMetric(
+      "% APY",
+      SOURCES.yield,
+      "Estimated APY: latest reward distribution annualized assuming three distributions per day, with weekly compounding. Not a realized trailing return.",
+      "Ethereum sUSDe vault; latest reward distribution (assumed eight-hour interval)",
+    ),
+    backing: emptyMetric(
+      "%",
+      SOURCES.backing,
+      "Requires dated issuer backing and USDe supply with a defined treatment of reserves. No public feed verified.",
+      "Issuer reporting; integration unavailable",
+    ),
+    reserve: emptyMetric(
+      "USD",
+      SOURCES.backing,
+      "Requires a dated issuer reserve balance. No public feed verified.",
+      "Issuer reporting; integration unavailable",
+    ),
+    enaPrice: emptyMetric(
+      "USD",
+      SOURCES.ena,
+      "Aggregated ENA market reference price, sourced via DeFiLlama/CoinGecko.",
+      "ENA reference price",
+      2,
+    ),
+    stakingShare: emptyMetric(
+      "%",
+      "https://docs.ethena.fi/video-guides/how-to-stake-usde",
+      "Vault underlying USDe assets divided by global circulating USDe; dated vault assets not connected.",
+      "Unavailable; sUSDe token counts are not USDe assets",
+    ),
+    minted: emptyMetric(
+      "USDe",
+      "https://docs.ethena.fi/video-guides/how-to-buy-usde",
+      "Gross primary-market mint events require a verified event indexer. Supply differences are not gross mints.",
+      "Primary-market events not indexed",
+    ),
+    redeemed: emptyMetric(
+      "USDe",
+      "https://docs.ethena.fi/video-guides/how-to-buy-usde",
+      "Gross primary-market redemption events require a verified event indexer. Transfers and bridge events are not redemptions.",
+      "Primary-market events not indexed",
+    ),
+  };
+  return {
+    version: 2,
+    mode: "production",
+    fetchedAt: now,
+    metrics: definitions,
+    supplyHistory: [],
+    priceHistory: [],
+    yieldHistory: [],
+    chains: [],
+    priceHistoryMeta: emptyMetric(
+      "USD",
+      SOURCES.prices,
+      "Daily USDe market-price observations, selected by the ethena-usde identifier.",
+      "Daily history; no intraday detail",
+    ),
+  };
 }
-
-function latestByChain(history: StablecoinHistory) {
-  const entries = Object.entries(history.chainBalances ?? {})
-    .map(([chain, series]) => {
-      const latest = (series.tokens ?? []).reduce<{
-        date: number;
-        supply: number;
-      } | null>((current, sample) => {
-        const supply = sample.circulating?.peggedUSD;
-        if (!sample.date || !Number.isFinite(supply)) return current;
-        if (!current || sample.date > current.date) {
-          return { date: sample.date, supply: supply ?? 0 };
-        }
-        return current;
-      }, null);
-      return latest ? { chain, supply: latest.supply } : null;
+function record(input: unknown): Record<string, unknown> {
+  if (!input || typeof input !== "object" || Array.isArray(input))
+    throw new Error("Invalid source object");
+  return input as Record<string, unknown>;
+}
+function array(input: unknown): unknown[] {
+  if (!Array.isArray(input)) throw new Error("Invalid source series");
+  return input;
+}
+function validNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function sampleDate(value: unknown): string | null {
+  if ((!validNumber(value) && typeof value !== "string") || value === "")
+    return null;
+  const date = new Date(typeof value === "number" ? value * 1000 : value);
+  return Number.isFinite(date.getTime()) &&
+    date.getTime() <= Date.now() + 300_000
+    ? date.toISOString()
+    : null;
+}
+function sorted(points: SeriesPoint[]): SeriesPoint[] {
+  return [...new Map(points.map((point) => [point.date, point])).values()].sort(
+    (a, b) => a.date.localeCompare(b.date),
+  );
+}
+export function parseSupply(input: unknown) {
+  const data = record(input);
+  if (
+    String(data.id) !== "146" ||
+    data.symbol !== "USDe" ||
+    typeof data.address !== "string" ||
+    data.address.toLowerCase() !== USDE_CONTRACT
+  )
+    throw new Error("Wrong USDe asset");
+  const points = sorted(
+    array(data.tokens).flatMap((sample) => {
+      const point = record(sample);
+      const date = sampleDate(point.date);
+      const value = record(point.circulating).peggedUSD;
+      return date && validNumber(value) && value >= 0
+        ? [{ date: date.slice(0, 10), value }]
+        : [];
+    }),
+  );
+  if (!points.length) throw new Error("Empty supply series");
+  const last = points[points.length - 1];
+  const chains = Object.entries(record(data.chainBalances))
+    .flatMap(([chain, input]) => {
+      const tokens = array(record(input).tokens);
+      const match = tokens.findLast(
+        (sample) => sampleDate(record(sample).date)?.slice(0, 10) === last.date,
+      );
+      if (!match) return [];
+      const value = record(record(match).circulating).peggedUSD;
+      return validNumber(value) && value > 0
+        ? [{ chain, supply: value, observedAt: last.date + "T00:00:00.000Z" }]
+        : [];
     })
-    .filter((item): item is { chain: string; supply: number } => item !== null && item.supply > 0)
-    .sort((left, right) => right.supply - left.supply);
-  const total = entries.reduce((sum, item) => sum + item.supply, 0);
-  return entries.map((item) => ({
-    ...item,
-    share: total > 0 ? item.supply / total : 0,
-  }));
+    .sort((a, b) => b.supply - a.supply);
+  return { points, chains };
 }
-
-async function fetchJson<T>(url: string): Promise<T> {
+export function parsePriceHistory(input: unknown): SeriesPoint[] {
+  const points = sorted(
+    array(input).flatMap((sample) => {
+      const point = record(sample);
+      const date = sampleDate(point.date);
+      const value = record(point.prices)["ethena-usde"];
+      return date && validNumber(value) && value > 0
+        ? [{ date: date.slice(0, 10), value }]
+        : [];
+    }),
+  );
+  if (!points.length) throw new Error("Empty price history");
+  return points;
+}
+export function parseYieldHistory(input: unknown): SeriesPoint[] {
+  const points = sorted(
+    array(record(input).data).flatMap((sample) => {
+      const point = record(sample);
+      const date = sampleDate(point.timestamp);
+      return date && validNumber(point.apy) && point.apy >= 0
+        ? [{ date, value: point.apy }]
+        : [];
+    }),
+  );
+  if (!points.length) throw new Error("Empty yield history");
+  return points;
+}
+export function parsePrice(input: unknown, key: string) {
+  const coin = record(record(record(input).coins)[key]);
+  const observedAt = sampleDate(coin.timestamp);
+  if (
+    !validNumber(coin.price) ||
+    coin.price <= 0 ||
+    !observedAt ||
+    !validNumber(coin.confidence) ||
+    coin.confidence < 0.5
+  )
+    throw new Error("Unreliable price");
+  return { value: coin.price, observedAt };
+}
+function observe(
+  metric: Metric,
+  value: number,
+  observedAt: string,
+  fetchedAt: string,
+): Metric {
+  return withFreshness({
+    ...metric,
+    value,
+    observedAt,
+    fetchedAt,
+    status: "current",
+  });
+}
+export async function fetchJson(url: string): Promise<unknown> {
   const response = await fetch(url, {
     headers: { accept: "application/json" },
-    next: { revalidate: 300 },
+    signal: AbortSignal.timeout(12_000),
+    cache: "no-store",
   });
-  if (!response.ok) {
-    throw new Error("DeFiLlama returned HTTP " + response.status);
-  }
-  return response.json() as Promise<T>;
+  if (!response.ok) throw new Error(`Provider HTTP ${response.status}`);
+  return response.json();
 }
-
-export class MockDataProvider implements DataProvider {
-  async getSnapshot() {
-    return getMockSnapshot();
-  }
-}
-
-export class DefiLlamaDataProvider implements DataProvider {
-  async getSnapshot() {
-    const demo = getMockSnapshot();
-    const [catalog, history] = await Promise.all([
-      fetchJson<StablecoinCatalog>("https://stablecoins.llama.fi/stablecoins"),
-      fetchJson<StablecoinHistory>("https://stablecoins.llama.fi/stablecoin/146"),
-    ]);
-    const assets = Array.isArray(catalog) ? catalog : catalog.peggedAssets ?? [];
-    const usde = assets.find(
-      (asset) => String(asset.id) === "146" || asset.name === "Ethena USDe",
-    );
-    const supplyPoints = toDailySupply(history);
-    if (!usde || supplyPoints.length < 30) {
-      throw new Error("DeFiLlama returned incomplete USDe supply history");
-    }
-
-    const latest = usde.circulating?.peggedUSD ?? supplyPoints[supplyPoints.length - 1].supply;
-    const chainBreakdown = latestByChain(history);
-    const mockStakingRatio = new Map(
-      demo.supplyPoints.map((point) => [point.date, point.stakingRatio]),
-    );
-    const alignedSupply = supplyPoints.map((point) => {
-      const stakingRatio = mockStakingRatio.get(point.date) ?? 0.24;
-      return {
-        ...point,
-        susdeSupply: point.supply * stakingRatio,
-        stakingRatio,
-      };
+export async function getProviderSnapshot(
+  fetcher: (url: string) => Promise<unknown> = fetchJson,
+): Promise<DashboardSnapshot> {
+  if (process.env.USDE_DATA_PROVIDER === "mock") return getMockSnapshot();
+  const snapshot = emptySnapshot();
+  // Cache only validated, normalized payloads: raw global feeds exceed 2 MB.
+  const cache =
+    fetcher === fetchJson ? (await import("next/cache")).unstable_cache : null;
+  async function load<T>(
+    url: string,
+    parse: (input: unknown) => T,
+  ): Promise<{ data: T; fetchedAt: string }> {
+    const read = async () => ({
+      data: parse(await fetcher(url)),
+      fetchedAt: new Date().toISOString(),
     });
-    const timestamp = new Date().toISOString();
-
-    return {
-      ...demo,
-      mode: "partial-live" as const,
-      updatedAt: timestamp,
-      currentSupply: latest,
-      supplyPoints: alignedSupply,
-      chainBreakdown: chainBreakdown.length ? chainBreakdown : demo.chainBreakdown,
-      sources: {
-        ...demo.sources,
-        supply: {
-          status: "live" as const,
-          name: "DeFiLlama stablecoin API",
-          updatedAt: timestamp,
-          note: "Circulating USDe aggregated from DeFiLlama chain history; staking split remains simulated.",
-        },
-      },
-    };
+    return cache
+      ? cache(read, ["ethena-normalized-v2", url], { revalidate: 300 })()
+      : read();
   }
+  // Each adapter owns its validation and failure. No synthetic production fallback.
+  await Promise.allSettled([
+    (async () => {
+      const {
+        data: { points, chains },
+        fetchedAt,
+      } = await load(SOURCES.supply, parseSupply);
+      const last = points[points.length - 1];
+      snapshot.supplyHistory = points;
+      snapshot.chains = chains;
+      snapshot.metrics.supply = observe(
+        snapshot.metrics.supply,
+        last.value,
+        last.date + "T00:00:00.000Z",
+        fetchedAt,
+      );
+      const delta = supplyDelta(points, 7);
+      if (delta !== null)
+        snapshot.metrics.supplyChange7d = observe(
+          snapshot.metrics.supplyChange7d,
+          delta,
+          last.date + "T00:00:00.000Z",
+          fetchedAt,
+        );
+    })(),
+    (async () => {
+      const { data: points, fetchedAt } = await load(
+        SOURCES.prices,
+        parsePriceHistory,
+      );
+      const last = points[points.length - 1];
+      snapshot.priceHistory = points;
+      snapshot.priceHistoryMeta = observe(
+        snapshot.priceHistoryMeta,
+        last.value,
+        last.date + "T00:00:00.000Z",
+        fetchedAt,
+      );
+    })(),
+    (async () => {
+      const { data: points, fetchedAt } = await load(
+        SOURCES.yield,
+        parseYieldHistory,
+      );
+      const last = points[points.length - 1];
+      snapshot.yieldHistory = points;
+      snapshot.metrics.yield = observe(
+        snapshot.metrics.yield,
+        last.value,
+        last.date,
+        fetchedAt,
+      );
+    })(),
+    ...(
+      [
+        ["price", SOURCES.price, `ethereum:${USDE_CONTRACT}`],
+        ["enaPrice", SOURCES.ena, "coingecko:ethena"],
+      ] as const
+    ).map(async ([metricKey, url, coin]) => {
+      const { data: point, fetchedAt } = await load(url, (input) =>
+        parsePrice(input, coin),
+      );
+      snapshot.metrics[metricKey] = observe(
+        snapshot.metrics[metricKey],
+        point.value,
+        point.observedAt,
+        fetchedAt,
+      );
+    }),
+  ]);
+  return snapshot;
 }
-
-export function createDataProvider(): DataProvider {
-  if (process.env.USDE_DATA_PROVIDER === "mock") return new MockDataProvider();
-  return new DefiLlamaDataProvider();
-}
-
 export async function getInitialDashboardData() {
-  return getMockSnapshot();
+  const next = await getProviderSnapshot();
+  if (next.mode === "demo") return next;
+  const { loadLatestSnapshot } = await import("./snapshot-store");
+  const { retainVerified } = await import("./metrics");
+  return retainVerified(next, await loadLatestSnapshot());
 }

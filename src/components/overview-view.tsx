@@ -1,298 +1,265 @@
 "use client";
-
-import { ArrowDownRight, ArrowUpRight, ExternalLink, Info } from "lucide-react";
+import Link from "next/link";
 import {
-  CumulativeFlowChart,
-  FlowChart,
-  ForceHistoryChart,
-  ForceScatterChart,
-  SupplyChart,
-} from "@/components/charts";
-import { DataBadge, ForceCard, Panel } from "@/components/primitives";
-import { formatBps, formatMoney, formatSignedMoney } from "@/lib/format";
-import { RANGE_OPTIONS, type RangeKey } from "@/lib/view-state";
+  ArrowRight,
+  ArrowUpRight,
+  CircleDollarSign,
+  Layers,
+  Vote,
+} from "lucide-react";
+import { HistoryPanel } from "./history-panel";
+import { MetricCard, Panel } from "./primitives";
+import { formatCompact, formatMoney, formatSignedMoney } from "@/lib/format";
+import { pegDifference, type RangeKey } from "@/lib/metrics";
 import type { DashboardSnapshot } from "@/lib/types";
 
+export function TokenGuide() {
+  return (
+    <div className="token-guide">
+      {[
+        {
+          name: "USDe",
+          category: "The dollar",
+          icon: CircleDollarSign,
+          copy: "A synthetic dollar designed to track $1. Holding it alone does not automatically earn staking rewards.",
+        },
+        {
+          name: "sUSDe",
+          category: "The staked dollar",
+          icon: Layers,
+          copy: "Stake USDe to receive sUSDe. Protocol rewards can increase the USDe value of each share. Yield varies.",
+        },
+        {
+          name: "ENA",
+          category: "The governance token",
+          icon: Vote,
+          copy: "A token for Ethena governance. Its market price can move independently of USDe; holding it is not company ownership.",
+        },
+      ].map(({ name, category, icon: Icon, copy }) => (
+        <article key={name} className="token-card">
+          <div className="token-top">
+            <Icon size={22} strokeWidth={1.5} />
+            <span>{category}</span>
+          </div>
+          <h3>{name}</h3>
+          <p>{copy}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
 export default function OverviewView({
   data,
   range,
-  onRangeChange,
-  logScale,
-  onLogScaleChange,
 }: {
   data: DashboardSnapshot;
   range: RangeKey;
-  onRangeChange: (range: RangeKey) => void;
-  logScale: boolean;
-  onLogScaleChange: (value: boolean) => void;
 }) {
-  const currentForce = data.forces[data.forces.length - 1];
-  const demoNet7d = data.flows.slice(-7).reduce((sum, point) => sum + point.net, 0);
-  const supplyHistory = data.supplyPoints;
-  const sevenDaySupplyDelta =
-    supplyHistory.length > 7
-      ? supplyHistory[supplyHistory.length - 1].supply - supplyHistory[supplyHistory.length - 8].supply
-      : demoNet7d;
-  const sevenDayDelta = data.mode === "partial-live" ? sevenDaySupplyDelta : demoNet7d;
-  const carrySpread7d =
-    data.forces.slice(-7).reduce((sum, point) => sum + point.carrySpread, 0) /
-    Math.min(7, data.forces.length);
-  const regime =
-    sevenDayDelta > 75_000_000 && carrySpread7d > 0.15
-      ? "Expansion"
-      : sevenDayDelta < -75_000_000 ||
-          (sevenDayDelta < 0 && carrySpread7d <= 0)
-        ? "Contraction"
-        : "Neutral";
-  const carryPositive = currentForce.carrySpread > 0;
-  const loopsPositive = currentForce.loopSpread > 0;
-  const explanation =
-    carryPositive && loopsPositive
-      ? "Carry and the loop spread both support mint-side interest."
-      : carryPositive
-        ? "Carry is positive; leverage is not adding to the mint incentive."
-        : loopsPositive
-          ? "Loop economics are positive while carry trails the T-bill."
-          : "Carry and leverage both lean toward redemption.";
-
+  const { metrics: m } = data;
+  const delta = m.supplyChange7d.value;
+  const peg = pegDifference(m.price.value);
+  const supplySummary =
+    delta === null
+      ? "A seven-day supply comparison is unavailable."
+      : `Across the latest seven-day observation window, USDe supply ${delta >= 0 ? "grew" : "fell"} by ${formatMoney(Math.abs(delta))} at its $1 target.`;
+  const priceSummary =
+    m.price.value === null
+      ? "The latest market price is unavailable."
+      : `The latest available reference price is $${m.price.value.toFixed(4)}, ${Math.abs(peg!).toFixed(3)}% ${peg! >= 0 ? "above" : "below"} its $1 target.`;
   return (
     <>
-      <div className="overview-intro">
-        <div className="overview-lede">
-          <div className="eyebrow">SUPPLY, THEN THE FORCES</div>
-          <h1>Why is USDe moving?</h1>
+      <section className="hero">
+        <div className="hero-copy">
+          <p className="eyebrow">
+            <span className="small-line" /> INDEPENDENT ETHENA DASHBOARD
+          </p>
+          <h1>
+            The big picture.
+            <br />
+            <span>In plain English.</span>
+          </h1>
+          <p className="hero-description">
+            Understand Ethena, its dollars, its yield, and its risks.
+            <br className="desktop-break" /> Start here. Explore the details
+            when you need them.
+          </p>
+          <Link href="/learn" className="hero-link">
+            New to Ethena? Start with the basics <ArrowRight size={16} />
+          </Link>
+        </div>
+        <div className="hero-art" aria-hidden="true">
+          <div className="orbit orbit-one" />
+          <div className="orbit orbit-two" />
+          <div className="dollar-mark">
+            e<span>≋</span>
+          </div>
+          <span className="art-caption">DOLLARS · YIELD · TRANSPARENCY</span>
+        </div>
+      </section>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">FIVE THINGS TO KNOW</p>
+          <h2>Ethena at a glance</h2>
+        </div>
+        <span className="quiet">Observation dates shown on every card</span>
+      </div>
+      <div className="headline-grid">
+        <MetricCard
+          label="USDe market price"
+          value={
+            m.price.value === null
+              ? "Unavailable"
+              : "$" + m.price.value.toFixed(4)
+          }
+          detail={
+            peg === null
+              ? undefined
+              : `${peg >= 0 ? "+" : ""}${peg.toFixed(3)}% from the $1 target`
+          }
+          explanation="How close USDe is trading to one dollar."
+          metric={m.price}
+        />
+        <MetricCard
+          label="USDe in circulation"
+          value={
+            m.supply.value === null
+              ? "Unavailable"
+              : formatCompact(m.supply.value)
+          }
+          detail={m.supply.value === null ? undefined : "USDe tokens"}
+          explanation="The total amount of USDe tracked by the source."
+          metric={m.supply}
+        />
+        <MetricCard
+          label="Supply change · 7 days"
+          value={delta === null ? "Unavailable" : formatSignedMoney(delta)}
+          detail={delta === null ? undefined : "USDe valued at the $1 target"}
+          explanation="Whether the tracked supply grew or shrank."
+          metric={m.supplyChange7d}
+        />
+        <MetricCard
+          label="sUSDe estimated yield"
+          value={
+            m.yield.value === null
+              ? "Unavailable"
+              : m.yield.value.toFixed(2) + "%"
+          }
+          detail="Estimated annual yield · APY"
+          explanation="A recent reward rate expressed over a year. It can change."
+          metric={m.yield}
+        />
+        <MetricCard
+          label="Reported backing"
+          value={
+            m.backing.value === null
+              ? "Unavailable"
+              : m.backing.value.toFixed(2) + "%"
+          }
+          detail="Issuer-reported coverage"
+          explanation="Reported assets relative to the dollars they back."
+          metric={m.backing}
+        />
+      </div>
+      <div className="plain-summary">
+        <span className="summary-icon">↗</span>
+        <div>
+          <h3>What the available data says</h3>
           <p>
-            Supply changes when counterparties mint or redeem. Carry, hedging, leverage and the peg
-            change how attractive each side is.
+            {priceSummary} {supplySummary} These observations alone do not
+            explain why supply changed.
           </p>
         </div>
-        <div className={"regime-badge " + regime.toLowerCase()}>
-          <span className="regime-pulse" />
-          <div>
-            <small>{data.mode === "partial-live" ? "SUPPLY REGIME · FLOW DEMO" : "DEMO REGIME"}</small>
-            <strong>{regime}</strong>
-          </div>
-        </div>
       </div>
-
-      <div className="plain-read" role="status">
-        <div className="plain-read-marker"><Info size={15} /></div>
-        <p>
-          {data.mode === "partial-live" ? (
-            <>
-              Live supply is {formatMoney(data.currentSupply)}; 7d supply change{" "}
-              <strong className={sevenDayDelta >= 0 ? "mint-text" : "redeem-text"}>
-                {formatSignedMoney(sevenDayDelta)}
-              </strong>
-              . Tape and force attribution are simulated, so this build cannot identify a live
-              driver.
-            </>
-          ) : (
-            <>
-              Simulated 7d net {formatSignedMoney(sevenDayDelta)}. {explanation}
-            </>
-          )}
-        </p>
+      <div className="charts-grid">
+        <HistoryPanel
+          title="How much USDe is out there?"
+          eyebrow="SUPPLY OVER TIME"
+          description="A rising line means more USDe in circulation; a falling line means less. Values use its $1 target."
+          points={data.supplyHistory}
+          metric={m.supply}
+          range={range}
+          kind="supply"
+        />
+        <HistoryPanel
+          title="Is USDe close to $1?"
+          eyebrow="PRICE OVER TIME"
+          description="Daily reference prices compared with the $1 target. Short-lived moves between samples may be missed."
+          points={data.priceHistory}
+          metric={data.priceHistoryMeta}
+          range={range}
+          kind="price"
+        />
       </div>
-
-      <div className="overview-grid">
-        <div className="overview-main">
-          <Panel
-            title="Supply & ForceScore"
-            eyebrow="SUPPLY STOCK · USD + HEURISTIC SCORE"
-            className="supply-panel"
-            action={
-              <div className="chart-controls">
-                <div className="segmented range-control" aria-label="Supply chart time range">
-                  {RANGE_OPTIONS.map((option) => (
-                    <button
-                      key={option.key}
-                      type="button"
-                      className={range === option.key ? "selected" : ""}
-                      onClick={() => onRangeChange(option.key)}
-                      aria-pressed={range === option.key}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="segmented scale-control" aria-label="Supply chart scale">
-                  <button
-                    type="button"
-                    className={!logScale ? "selected" : ""}
-                    onClick={() => onLogScaleChange(false)}
-                    aria-pressed={!logScale}
-                  >
-                    Linear
-                  </button>
-                  <button
-                    type="button"
-                    className={logScale ? "selected" : ""}
-                    onClick={() => onLogScaleChange(true)}
-                    aria-pressed={logScale}
-                  >
-                    Log
-                  </button>
-                </div>
-              </div>
-            }
-          >
-            <div className="panel-source-line">
-              <span>Supply in USD (left axis) · ForceScore around zero (right axis)</span>
-              <span className="source-badges">
-                <DataBadge
-                  status={data.sources.supply.status}
-                  label={
-                    data.sources.supply.status === "live"
-                      ? "LIVE SUPPLY"
-                      : data.sources.supply.status === "stale"
-                        ? "STALE SUPPLY"
-                        : "DEMO SUPPLY"
-                  }
-                />
-                <DataBadge
-                  status={data.sources.forces.status}
-                  label={
-                    data.sources.forces.status === "live"
-                      ? "LIVE SCORE"
-                      : data.sources.forces.status === "stale"
-                        ? "STALE SCORE"
-                        : "DEMO SCORE"
-                  }
-                />
-              </span>
-            </div>
-            <SupplyChart
-              data={data.supplyPoints}
-              events={data.events}
-              forces={data.forces}
-              range={range}
-              logScale={logScale}
-            />
-            <div className="chart-legend">
-              <span><i className="legend-line supply-line" />USDe supply</span>
-              <span><i className="legend-block score-positive" />Positive score · mint-side</span>
-              <span><i className="legend-block score-negative" />Negative score · redeem-side</span>
-              <span className="legend-note">ATH annotation: ~$14.8B · Oct 2025 · demo path</span>
-            </div>
-          </Panel>
-
-          <Panel
-            title="The tape"
-            eyebrow="PRIMARY-MARKET FLOW · USDE / DAY"
-            action={
-              <a className="panel-link" href="/tape">
-                Open tape <ExternalLink size={12} />
-              </a>
-            }
-          >
-            <div className="panel-source-line">
-              <span>Mint positive · redeem negative · net in white</span>
-              <DataBadge status="simulated" label="SIMULATED TAPE" />
-            </div>
-            <FlowChart data={data.flows} range={range} height={236} />
-            <div className="chart-legend">
-              <span><i className="legend-block mint-bg" />Mints</span>
-              <span><i className="legend-block redeem-bg" />Redeems</span>
-              <span><i className="legend-line net-line" />Net supply change</span>
-            </div>
-          </Panel>
-
-          <Panel
-            title="Cumulative net minted"
-            eyebrow="MINTS − REDEEMS"
-            action={<span className="panel-meta">Since Feb 2024 · simulated</span>}
-          >
-            <CumulativeFlowChart data={data.flows} range={range} height={200} />
-          </Panel>
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">THREE DIFFERENT ROLES</p>
+          <h2>Meet the tokens</h2>
         </div>
-
-        <aside className="overview-rail">
-          <div className="rail-heading">
+        <Link className="text-link" href="/learn">
+          How it works <ArrowRight size={14} />
+        </Link>
+      </div>
+      <TokenGuide />
+      <div className="two-column">
+        <Panel title="Follow the USDe flow" eyebrow="GO A LITTLE DEEPER">
+          <p className="body-copy">
+            See supply grow and shrink over time, and understand the difference
+            between new dollars, redeemed dollars, and everyday trading.
+          </p>
+          <Link href={"/flow?range=" + range} className="text-link">
+            Explore USDe Flow <ArrowRight size={16} />
+          </Link>
+        </Panel>
+        <Panel
+          title="Around the Ethena ecosystem"
+          eyebrow="KEEP THE ROLES SEPARATE"
+        >
+          <div className="ecosystem-row">
             <div>
-              <div className="eyebrow">MARKET FORCES</div>
-              <h2>What moves the tape?</h2>
+              <b>ENA market price</b>
+              <p>Governance token · a separate market from USDe</p>
             </div>
-            <a className="panel-link" href="/forces">All forces →</a>
+            <strong>
+              {m.enaPrice.value === null
+                ? "Unavailable"
+                : "$" + m.enaPrice.value.toFixed(4)}
+            </strong>
           </div>
-          <div className="force-card-grid">
-            <ForceCard kind="carry" data={data.forces} compact />
-            <ForceCard kind="funding" data={data.forces} compact />
-            <ForceCard kind="loop" data={data.forces} compact />
-            <ForceCard kind="peg" data={data.forces} compact />
+          <div className="ecosystem-source">
+            <a href={m.enaPrice.sourceUrl} target="_blank" rel="noreferrer">
+              {m.enaPrice.source} · {m.enaPrice.status} ·{" "}
+              {m.enaPrice.observedAt?.replace("T", " ").slice(0, 16) ??
+                "No observation"}
+              <ArrowUpRight size={12} />
+            </a>
           </div>
-
-          <Panel title="How to read the signal" eyebrow="CAUSAL CHAIN">
-            <div className="causal-chain">
-              <div className="causal-step">
-                <span className="causal-index">01</span>
-                <div><b>Yield & hedge</b><small>Carry and funding change the cost of holding the position.</small></div>
-              </div>
-              <div className="causal-connector" />
-              <div className="causal-step">
-                <span className="causal-index">02</span>
-                <div><b>Loop & peg</b><small>Borrow spreads and secondary price add or remove arbitrage.</small></div>
-              </div>
-              <div className="causal-connector" />
-              <div className="causal-step outcome">
-                <span className="causal-index">03</span>
-                <div><b>Mint or redeem</b><small>Whitelisted primary-market flow changes circulating supply.</small></div>
-                <span className={sevenDayDelta >= 0 ? "outcome-icon mint-text" : "outcome-icon redeem-text"}>
-                  {sevenDayDelta >= 0 ? <ArrowUpRight size={17} /> : <ArrowDownRight size={17} />}
-                </span>
-              </div>
-            </div>
-          </Panel>
-
-          <Panel title="What this view knows" eyebrow="SOURCE STATUS">
-            <div className="source-status-list">
-              <div><span>Supply history</span><DataBadge status={data.sources.supply.status} /></div>
-              <div><span>Mint / redeem tape</span><DataBadge status={data.sources.flows.status} /></div>
-              <div><span>Market forces</span><DataBadge status={data.sources.forces.status} /></div>
+          <div className="ecosystem-row">
+            <div>
+              <b>USDtb</b>
               <p>
-                {data.sources.supply.note} {data.sources.flows.note}
+                A separate dollar product backed primarily by tokenized US
+                Treasuries. Its supply is excluded here.
               </p>
             </div>
-          </Panel>
-        </aside>
+            <a
+              aria-label="USDtb official website"
+              href="https://usdtb.money/"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <ArrowUpRight size={20} />
+            </a>
+          </div>
+          <a
+            className="text-link"
+            href="https://gov.ethenafoundation.com/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Read official governance updates <ArrowUpRight size={14} />
+          </a>
+        </Panel>
       </div>
-
-      <Panel
-        title="ForceScore vs the next 7 days"
-        eyebrow="TRANSPARENT HEURISTIC · NOT A FORECAST"
-        action={<span className="panel-meta">Score at day t · flow from t+1 to t+7</span>}
-        className="force-score-panel"
-      >
-        <p className="panel-description">
-          The score combines carry, ETH funding, loop spread, net peg premium and redemption stress.
-          Each term is standardized against its trailing 90 days using the published default weights.
-        </p>
-        <div className="force-score-grid">
-          <div>
-            <div className="subchart-heading"><b>ForceScore and following 7d net</b><span>Over time</span></div>
-            <ForceHistoryChart data={data.forces} range={range} height={250} />
-          </div>
-          <div>
-            <div className="subchart-heading"><b>Score vs next-7d net</b><span>One point per day</span></div>
-            <ForceScatterChart data={data.forces.slice(-365)} height={250} />
-          </div>
-        </div>
-        <div className="formula-strip">
-          <code>
-            0.30 carry + 0.25 ETH funding + 0.25 loop spread + 0.15 peg edge − 0.05 redemption stress
-          </code>
-          <span>Descriptive only · no proven R²</span>
-          <a href="/methodology">Methodology <ExternalLink size={11} /></a>
-        </div>
-        <div className="score-caveat">
-          <Info size={13} />
-          <span>
-            Demo force readings are synthetic. A live supply line does not imply live tape or causal
-            attribution.
-          </span>
-          <span>Current peg edge {formatBps(currentForce.pegBps - currentForce.mintFeeBps)}</span>
-        </div>
-      </Panel>
     </>
   );
 }

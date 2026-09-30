@@ -1,223 +1,322 @@
 "use client";
-
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
-  Activity,
   ArrowLeftRight,
+  ArrowUpRight,
   BookOpen,
-  CalendarDays,
+  ChartNoAxesCombined,
   LayoutDashboard,
   RefreshCw,
-  SlidersHorizontal,
+  ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
-import EventsView from "@/components/events-view";
-import ForcesView from "@/components/forces-view";
-import MethodologyView from "@/components/methodology-view";
-import OverviewView from "@/components/overview-view";
-import TapeView from "@/components/tape-view";
-import { DataBadge, FlowKpis } from "@/components/primitives";
-import { formatMoney } from "@/lib/format";
+import OverviewView from "./overview-view";
+import TapeView from "./tape-view";
+import YieldView from "./yield-view";
+import BackingView from "./backing-view";
+import LearnView from "./learn-view";
+import MethodologyView from "./methodology-view";
+import {
+  RANGE_OPTIONS,
+  parseRange,
+  retainVerified,
+  withFreshness,
+  type RangeKey,
+} from "@/lib/metrics";
 import type { DashboardSnapshot } from "@/lib/types";
-import type { RangeKey } from "@/lib/view-state";
-
-type Section = "overview" | "tape" | "forces" | "events" | "methodology";
-
-const navigation: Array<{ section: Section; href: string; label: string; icon: typeof Activity }> = [
+export type Section =
+  | "overview"
+  | "flow"
+  | "yield"
+  | "backing"
+  | "learn"
+  | "sources";
+const navigation = [
   { section: "overview", href: "/", label: "Overview", icon: LayoutDashboard },
-  { section: "tape", href: "/tape", label: "Tape", icon: ArrowLeftRight },
-  { section: "forces", href: "/forces", label: "Forces", icon: SlidersHorizontal },
-  { section: "events", href: "/events", label: "Events", icon: CalendarDays },
-  { section: "methodology", href: "/methodology", label: "Methodology", icon: BookOpen },
-];
-
-const sectionTitles: Record<Section, string> = {
-  overview: "Overview",
-  tape: "Primary-market tape",
-  forces: "Market forces",
-  events: "Event context",
-  methodology: "Sources & methodology",
-};
-
+  { section: "flow", href: "/flow", label: "USDe Flow", icon: ArrowLeftRight },
+  { section: "yield", href: "/yield", label: "Yield", icon: TrendingUp },
+  {
+    section: "backing",
+    href: "/backing",
+    label: "Backing & Risks",
+    icon: ShieldCheck,
+  },
+  { section: "learn", href: "/learn", label: "Learn", icon: BookOpen },
+] as const;
+function ageSnapshot(snapshot: DashboardSnapshot): DashboardSnapshot {
+  return {
+    ...snapshot,
+    metrics: Object.fromEntries(
+      Object.entries(snapshot.metrics).map(([key, metric]) => [
+        key,
+        withFreshness(metric),
+      ]),
+    ) as DashboardSnapshot["metrics"],
+    priceHistoryMeta: withFreshness(snapshot.priceHistoryMeta),
+  };
+}
 export default function DashboardWorkspace({
   section,
   initialData,
   initialRange = "90d",
-  initialLogScale = false,
 }: {
   section: Section;
   initialData: DashboardSnapshot;
   initialRange?: RangeKey;
-  initialLogScale?: boolean;
 }) {
   const [data, setData] = useState(initialData);
-  const [range, setRange] = useState<RangeKey>(initialRange);
-  const [logScale, setLogScale] = useState(initialLogScale);
+  const [range, setRange] = useState(initialRange);
   const [refreshing, setRefreshing] = useState(false);
   const [notice, setNotice] = useState("");
-
-  const refresh = useCallback(async (quiet = false) => {
-    if (!quiet) setRefreshing(true);
+  const pending = useRef(false);
+  const request = useRef<AbortController | null>(null);
+  const refresh = useCallback(async () => {
+    if (pending.current) return;
+    pending.current = true;
+    setRefreshing(true);
+    const controller = new AbortController();
+    request.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 20_000);
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
-      if (!response.ok) throw new Error("Dashboard source unavailable");
+      const response = await fetch("/api/dashboard", {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("Refresh unavailable");
       const snapshot = (await response.json()) as DashboardSnapshot;
-      setData(snapshot);
-      setNotice("");
+      if (
+        snapshot.version !== 2 ||
+        !snapshot.metrics ||
+        !Array.isArray(snapshot.supplyHistory)
+      )
+        throw new Error("Invalid dashboard response");
+      setData((previous) => ageSnapshot(retainVerified(snapshot, previous)));
+      setNotice("Data checked. Observation dates are shown with each metric.");
     } catch {
-      setNotice("Live refresh unavailable · keeping the last visible snapshot");
+      if (!controller.signal.aborted || request.current === controller) {
+        setData((previous) => ({
+          ...previous,
+          metrics: Object.fromEntries(
+            Object.entries(previous.metrics).map(([key, metric]) => [
+              key,
+              metric.value !== null && metric.status !== "demo"
+                ? { ...metric, status: "stale" }
+                : metric,
+            ]),
+          ) as DashboardSnapshot["metrics"],
+          priceHistoryMeta:
+            previous.priceHistoryMeta.value !== null && previous.mode !== "demo"
+              ? { ...previous.priceHistoryMeta, status: "stale" }
+              : previous.priceHistoryMeta,
+        }));
+        setNotice(
+          "Refresh unavailable. Any retained readings keep their original observation dates.",
+        );
+      }
     } finally {
-      setRefreshing(false);
+      window.clearTimeout(timeout);
+      pending.current = false;
+      if (request.current === controller) {
+        setRefreshing(false);
+        request.current = null;
+      }
     }
   }, []);
-
   useEffect(() => {
-    const firstRefresh = window.setTimeout(() => void refresh(true), 0);
-    const timer = window.setInterval(() => void refresh(true), 120_000);
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 300_000);
+    const onPop = () =>
+      setRange(
+        parseRange(
+          new URL(window.location.href).searchParams.get("range") ?? undefined,
+        ),
+      );
+    window.addEventListener("popstate", onPop);
     return () => {
-      window.clearTimeout(firstRefresh);
       window.clearInterval(timer);
+      window.removeEventListener("popstate", onPop);
+      request.current?.abort();
+      request.current = null;
     };
   }, [refresh]);
-
-  function changeRange(value: RangeKey) {
-    setRange(value);
+  function changeRange(next: RangeKey) {
+    setRange(next);
     const url = new URL(window.location.href);
-    if (value === "90d") url.searchParams.delete("range");
-    else url.searchParams.set("range", value);
-    window.history.replaceState(null, "", url);
+    if (next === "90d") url.searchParams.delete("range");
+    else url.searchParams.set("range", next);
+    window.history.pushState(null, "", url);
   }
-
-  function changeScale(value: boolean) {
-    setLogScale(value);
-    const url = new URL(window.location.href);
-    if (value) url.searchParams.set("scale", "log");
-    else url.searchParams.delete("scale");
-    window.history.replaceState(null, "", url);
-  }
-
-  const dataLabel =
-    data.mode === "partial-live"
-      ? "PARTIAL LIVE"
-      : data.sources.supply.status === "stale"
-        ? "STALE · DEMO FALLBACK"
-        : "DEMO DATA";
-  const viewQuery =
-    (range !== "90d" ? "?range=" + range : "") +
-    (logScale ? (range !== "90d" ? "&" : "?") + "scale=log" : "");
-  const updated = data.updatedAt.slice(0, 16).replace("T", " ") + " UTC";
+  const viewQuery = range === "90d" ? "" : "?range=" + range;
   const title =
-    section === "overview" ? "USDe supply & market forces" : sectionTitles[section];
-
+    navigation.find((item) => item.section === section)?.label ??
+    "Sources & methods";
+  const isChartPage = ["overview", "flow", "yield"].includes(section);
+  const available = Object.values(data.metrics).filter(
+    (metric) => metric.value !== null,
+  ).length;
   return (
     <div className="app-shell">
+      <a href="#main-content" className="skip-link">
+        Skip to content
+      </a>
       <aside className="desktop-sidebar">
-        <Link className="brand-lockup" href="/">
-          <span className="brand-mark"><span /></span>
-          <span><b>USDe</b><small>FLOW LAB</small></span>
+        <Link className="brand" href="/">
+          <span className="brand-symbol" aria-hidden="true">
+            e≋
+          </span>
+          <span>
+            <b>ethena</b>
+            <small>EXPLAINED</small>
+          </span>
         </Link>
-        <div className="sidebar-divider" />
-        <div className="sidebar-caption">ANALYSIS</div>
-        <nav className="primary-nav" aria-label="Main navigation">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                href={item.href + viewQuery}
-                key={item.section}
-                className={section === item.section ? "nav-link active" : "nav-link"}
-                aria-current={section === item.section ? "page" : undefined}
-              >
-                <Icon size={16} strokeWidth={1.8} />
-                <span>{item.label}</span>
-                {section === item.section && <i />}
-              </Link>
-            );
-          })}
+        <p className="sidebar-label">YOUR GUIDE TO ETHENA</p>
+        <nav aria-label="Main navigation" className="primary-nav">
+          {navigation.map(({ section: id, href, label, icon: Icon }) => (
+            <Link
+              key={id}
+              href={href + viewQuery}
+              className={`nav-link ${section === id ? "active" : ""}`}
+              aria-current={section === id ? "page" : undefined}
+            >
+              <Icon size={18} strokeWidth={1.7} />
+              <span>{label}</span>
+              {section === id && <span className="nav-dot" />}
+            </Link>
+          ))}
         </nav>
-        <div className="sidebar-spacer" />
-        <div className="sidebar-note">
-          <div className="sidebar-note-icon"><Activity size={14} /></div>
-          <div><b>Supply is the outcome</b><p>Flow is the mechanism. Market forces change the incentive.</p></div>
-        </div>
-        <div className="sidebar-source">
-          <span>DATA MODE</span>
-          <DataBadge
-            status={data.sources.supply.status}
-            label={dataLabel}
-          />
+        <div className="sidebar-bottom">
+          <div className="sidebar-note">
+            <ChartNoAxesCombined size={22} strokeWidth={1.5} />
+            <h3>Clarity before complexity.</h3>
+            <p>
+              Understand the dollars.
+              <br />
+              Follow the data.
+              <br />
+              Know the limits.
+            </p>
+          </div>
+          <Link
+            className={`nav-link ${section === "sources" ? "active" : ""}`}
+            href={"/sources" + viewQuery}
+            aria-current={section === "sources" ? "page" : undefined}
+          >
+            <BookOpen size={17} />
+            Sources & methods
+          </Link>
+          <a
+            className="official-link"
+            href="https://app.ethena.fi/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Official Ethena app <ArrowUpRight size={15} />
+          </a>
+          <small className="independent-label">
+            Independent. Not affiliated with Ethena.
+          </small>
         </div>
       </aside>
-
       <div className="main-column">
         <header className="topbar">
-          <div className="topbar-title">
-            <Link className="mobile-brand" href="/">
-              <span className="brand-mark"><span /></span><b>USDe <em>FLOW LAB</em></b>
-            </Link>
-            <div className="breadcrumb"><span>USDE FLOW LAB</span><b>/</b>{title}</div>
+          <Link href="/" className="mobile-brand">
+            <span className="brand-symbol">e≋</span>
+            <b>
+              ethena <small>EXPLAINED</small>
+            </b>
+          </Link>
+          <div className="breadcrumb">
+            Dashboard <span>/</span>
+            <b>{title}</b>
           </div>
           <div className="topbar-status">
-            <DataBadge status={data.sources.supply.status} label={dataLabel} />
-            <span className="updated-label">Updated {updated}</span>
-            <button
-              className={"refresh-button" + (refreshing ? " refreshing" : "")}
-              onClick={() => void refresh()}
-              type="button"
-              aria-label="Refresh dashboard data"
-              title="Refresh dashboard data"
+            <span
+              className={`public-status ${data.mode === "demo" ? "demo" : ""}`}
             >
-              <RefreshCw size={14} />
-              <span>Refresh</span>
+              <i />
+              {data.mode === "demo" ? "Demo data" : "Public data"}
+            </span>
+            <button
+              type="button"
+              className="refresh-button"
+              onClick={() => void refresh()}
+              disabled={refreshing}
+              aria-label="Refresh dashboard data"
+            >
+              <RefreshCw size={15} className={refreshing ? "spinning" : ""} />
+              <span>{refreshing ? "Checking…" : "Refresh"}</span>
             </button>
           </div>
         </header>
-
-        <nav className="mobile-nav scrollbar-none" aria-label="Main navigation">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                href={item.href + viewQuery}
-                key={item.section}
-                className={section === item.section ? "mobile-nav-link active" : "mobile-nav-link"}
-                aria-current={section === item.section ? "page" : undefined}
-              >
-                <Icon size={14} />
-                {item.label}
-              </Link>
-            );
-          })}
+        <nav className="mobile-nav" aria-label="Mobile navigation">
+          {navigation.map((item) => (
+            <Link
+              href={item.href + viewQuery}
+              key={item.section}
+              className={section === item.section ? "active" : ""}
+              aria-current={section === item.section ? "page" : undefined}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
-
-        <main className="main-content">
-          {notice && <div className="stale-notice" role="status">{notice}</div>}
-          <FlowKpis data={data} />
-
-          {section === "overview" && (
-            <OverviewView
-              data={data}
-              range={range}
-              onRangeChange={changeRange}
-              logScale={logScale}
-              onLogScaleChange={changeScale}
-            />
+        <main id="main-content" className="main-content" tabIndex={-1}>
+          {data.mode === "demo" && (
+            <div className="notice demo-banner" role="status">
+              <b>Demo mode · synthetic values.</b> This is an illustrative
+              dataset, not an observation of Ethena.
+            </div>
           )}
-          {section === "tape" && <TapeView data={data} range={range} onRangeChange={changeRange} />}
-          {section === "forces" && <ForcesView data={data} range={range} onRangeChange={changeRange} />}
-          {section === "events" && <EventsView data={data} />}
-          {section === "methodology" && <MethodologyView data={data} />}
+          {available === 0 && data.mode === "production" && (
+            <div className="notice" role="status">
+              Public providers are currently unavailable. The dashboard remains
+              usable, and missing readings are clearly marked.
+            </div>
+          )}
+          {notice && (
+            <p className="refresh-notice" role="status">
+              {notice}
+            </p>
+          )}
+          {isChartPage && (
+            <div className="range-toolbar">
+              <span>
+                Explore a period <small>ending at the latest observation</small>
+              </span>
+              <div role="group" aria-label="Chart time range">
+                {RANGE_OPTIONS.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    aria-pressed={range === item.key}
+                    className={range === item.key ? "selected" : ""}
+                    onClick={() => changeRange(item.key)}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {section === "overview" && <OverviewView data={data} range={range} />}
+          {section === "flow" && <TapeView data={data} range={range} />}
+          {section === "yield" && <YieldView data={data} range={range} />}
+          {section === "backing" && <BackingView data={data} />}
+          {section === "learn" && <LearnView />}
+          {section === "sources" && <MethodologyView data={data} />}
         </main>
-
         <footer className="site-footer">
-          <div><span className="footer-brand">USDe FLOW LAB</span><span>Independent data workspace</span></div>
+          <div>
+            <b>ethena explained</b>
+            <span>Understand first. Explore further.</span>
+          </div>
           <p>
-            Not affiliated with Ethena. Not financial advice. Primary-market mint / redeem is
-            restricted to whitelisted counterparties; secondary volume is not supply.
+            Independent dashboard · Not affiliated with Ethena · Informational,
+            not financial advice.
           </p>
-          <a href="https://etherscan.io/token/0x4c9edd5852cd905f086c759e8383e09bff1e68b3" target="_blank" rel="noreferrer">
-            USDe contract <span>{formatMoney(data.currentSupply)} shown</span>
-          </a>
+          <Link href={"/sources" + viewQuery}>Sources & methods ↗</Link>
         </footer>
       </div>
     </div>
