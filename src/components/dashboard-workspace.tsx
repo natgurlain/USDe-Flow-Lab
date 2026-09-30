@@ -1,50 +1,16 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useDashboardSession } from "./dashboard-shell";
+import { DashboardView } from "./dashboard-view";
 import {
-  ArrowLeftRight,
-  ArrowUpRight,
-  BookOpen,
-  ChartNoAxesCombined,
-  LayoutDashboard,
-  RefreshCw,
-  ShieldCheck,
-  TrendingUp,
-} from "lucide-react";
-import dynamic from "next/dynamic";
-const OverviewView = dynamic(() => import("./overview-view"));
-const TapeView = dynamic(() => import("./tape-view"));
-const YieldView = dynamic(() => import("./yield-view"));
-const BackingView = dynamic(() => import("./backing-view"));
-import LearnView from "./learn-view";
-const MethodologyView = dynamic(() => import("./methodology-view"));
-import {
-  RANGE_OPTIONS,
   parseRange,
   retainVerified,
   withFreshness,
   type RangeKey,
 } from "@/lib/metrics";
 import type { DashboardSnapshot } from "@/lib/types";
-export type Section =
-  | "overview"
-  | "flow"
-  | "yield"
-  | "backing"
-  | "learn"
-  | "sources";
-const navigation = [
-  { section: "overview", href: "/", label: "Overview", icon: LayoutDashboard },
-  { section: "flow", href: "/flow", label: "USDe Flow", icon: ArrowLeftRight },
-  { section: "yield", href: "/yield", label: "Yield", icon: TrendingUp },
-  {
-    section: "backing",
-    href: "/backing",
-    label: "Backing & Risks",
-    icon: ShieldCheck,
-  },
-  { section: "learn", href: "/learn", label: "Learn", icon: BookOpen },
-] as const;
+import type { Section } from "./dashboard-view";
+export type { Section } from "./dashboard-view";
 function ageSnapshot(snapshot: DashboardSnapshot): DashboardSnapshot {
   return {
     ...snapshot,
@@ -78,7 +44,14 @@ export default function DashboardWorkspace({
   initialData: DashboardSnapshot;
   initialRange?: RangeKey;
 }) {
-  const [data, setData] = useState(initialData);
+  const {
+    snapshot,
+    publish,
+    setRange: publishRange,
+    setRefreshing: publishRefreshing,
+    registerRefresh,
+  } = useDashboardSession();
+  const [data, setData] = useState(() => retainVerified(initialData, snapshot));
   const [range, setRange] = useState(initialRange);
   const [refreshing, setRefreshing] = useState(false);
   const [notice, setNotice] = useState("");
@@ -111,7 +84,7 @@ export default function DashboardWorkspace({
       setNotice(
         snapshot.providerFailures?.length
           ? `Checked available sources. ${snapshot.providerFailures.length} source integrations could not update; retained readings keep their original dates.`
-          : "Data checked. Observation dates are shown with each metric.",
+          : "",
       );
     } catch {
       if (!controller.signal.aborted || request.current === controller) {
@@ -182,190 +155,50 @@ export default function DashboardWorkspace({
     else url.searchParams.set("range", next);
     window.history.pushState(null, "", url);
   }
-  const viewQuery = range === "90d" ? "" : "?range=" + range;
-  const title =
-    navigation.find((item) => item.section === section)?.label ??
-    "Sources & methods";
-  const isChartPage = ["overview", "flow", "yield"].includes(section);
   const available = Object.values(data.metrics).filter(
     (metric) => metric.value !== null,
   ).length;
-  const rangeControls = (
-    <div className="range-toolbar">
-      <span>
-        Chart period <small>Charts only · headline windows stay fixed</small>
-      </span>
-      <div role="group" aria-label="Chart time range">
-        {RANGE_OPTIONS.map((item) => (
-          <button
-            key={item.key}
-            type="button"
-            aria-pressed={range === item.key}
-            className={range === item.key ? "selected" : ""}
-            onClick={() => changeRange(item.key)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  useEffect(() => {
+    if (section !== "learn") publish(data);
+  }, [data, section, publish]);
+  useEffect(() => {
+    publishRange(range);
+  }, [range, publishRange]);
+  useEffect(() => {
+    publishRefreshing(refreshing);
+  }, [refreshing, publishRefreshing]);
+  useEffect(() => {
+    registerRefresh(section === "learn" ? null : refresh);
+    return () => {
+      registerRefresh(null);
+      publishRefreshing(false);
+    };
+  }, [refresh, section, registerRefresh, publishRefreshing]);
   return (
-    <div className="app-shell">
-      <a href="#main-content" className="skip-link">
-        Skip to content
-      </a>
-      <aside className="desktop-sidebar">
-        <Link className="brand" href="/">
-          <span className="brand-symbol" aria-hidden="true">
-            e≋
-          </span>
-          <span>
-            <b>ethena</b>
-            <small>EXPLAINED</small>
-          </span>
-        </Link>
-        <p className="sidebar-label">YOUR GUIDE TO ETHENA</p>
-        <nav aria-label="Main navigation" className="primary-nav">
-          {navigation.map(({ section: id, href, label, icon: Icon }) => (
-            <Link
-              key={id}
-              href={href + viewQuery}
-              className={`nav-link ${section === id ? "active" : ""}`}
-              aria-current={section === id ? "page" : undefined}
-            >
-              <Icon size={18} strokeWidth={1.7} />
-              <span>{label}</span>
-              {section === id && <span className="nav-dot" />}
-            </Link>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="sidebar-note">
-            <ChartNoAxesCombined size={22} strokeWidth={1.5} />
-            <h3>Clarity before complexity.</h3>
-            <p>
-              Understand the dollars.
-              <br />
-              Follow the data.
-              <br />
-              Know the limits.
-            </p>
-          </div>
-          <Link
-            className={`nav-link ${section === "sources" ? "active" : ""}`}
-            href={"/sources" + viewQuery}
-            aria-current={section === "sources" ? "page" : undefined}
-          >
-            <BookOpen size={17} />
-            Sources & methods
-          </Link>
-          <a
-            className="official-link"
-            href="https://app.ethena.fi/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Official Ethena app <ArrowUpRight size={15} />
-          </a>
-          <small className="independent-label">
-            Independent. Not affiliated with Ethena.
-          </small>
+    <>
+      {data.mode === "demo" && (
+        <div className="notice demo-banner" role="status">
+          <b>Demo mode · synthetic values.</b> This is an illustrative dataset,
+          not an observation of Ethena.
         </div>
-      </aside>
-      <div className="main-column">
-        <header className="topbar">
-          <Link href="/" className="mobile-brand">
-            <span className="brand-symbol">e≋</span>
-            <b>
-              ethena <small>EXPLAINED</small>
-            </b>
-          </Link>
-          <div className="breadcrumb">
-            Dashboard <span>/</span>
-            <b>{title}</b>
-          </div>
-          <div className="topbar-status">
-            <span
-              className={`public-status ${data.mode === "demo" ? "demo" : ""}`}
-            >
-              <i />
-              {section === "learn"
-                ? "Learning guide"
-                : data.mode === "demo"
-                  ? "Demo data"
-                  : "Public data"}
-            </span>
-            <button
-              type="button"
-              className="refresh-button"
-              onClick={() => void refresh()}
-              disabled={refreshing || section === "learn"}
-              aria-label="Refresh dashboard data"
-            >
-              <RefreshCw size={15} className={refreshing ? "spinning" : ""} />
-              <span>{refreshing ? "Checking…" : "Refresh"}</span>
-            </button>
-          </div>
-        </header>
-        <nav className="mobile-nav" aria-label="Mobile navigation">
-          {navigation.map((item) => (
-            <Link
-              href={item.href + viewQuery}
-              key={item.section}
-              className={section === item.section ? "active" : ""}
-              aria-current={section === item.section ? "page" : undefined}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <main id="main-content" className="main-content" tabIndex={-1}>
-          {data.mode === "demo" && (
-            <div className="notice demo-banner" role="status">
-              <b>Demo mode · synthetic values.</b> This is an illustrative
-              dataset, not an observation of Ethena.
-            </div>
-          )}
-          {section !== "learn" &&
-            available === 0 &&
-            data.mode === "production" && (
-              <div className="notice" role="status">
-                Public providers are currently unavailable. The dashboard
-                remains usable, and missing readings are clearly marked.
-              </div>
-            )}
-          {notice && (
-            <p className="refresh-notice" role="status">
-              {notice}
-            </p>
-          )}
-          {isChartPage && section !== "overview" && rangeControls}
-          {section === "overview" && (
-            <OverviewView
-              data={data}
-              range={range}
-              chartControls={rangeControls}
-            />
-          )}
-          {section === "flow" && <TapeView data={data} range={range} />}
-          {section === "yield" && <YieldView data={data} range={range} />}
-          {section === "backing" && <BackingView data={data} />}
-          {section === "learn" && <LearnView />}
-          {section === "sources" && <MethodologyView data={data} />}
-        </main>
-        <footer className="site-footer">
-          <div>
-            <b>ethena explained</b>
-            <span>Understand first. Explore further.</span>
-          </div>
-          <p>
-            Independent dashboard · Not affiliated with Ethena · Informational,
-            not financial advice.
-          </p>
-          <Link href={"/sources" + viewQuery}>Sources & methods ↗</Link>
-        </footer>
-      </div>
-    </div>
+      )}
+      {section !== "learn" && available === 0 && data.mode === "production" && (
+        <div className="notice" role="status">
+          Public providers are currently unavailable. The dashboard remains
+          usable, and missing readings are clearly marked.
+        </div>
+      )}
+      {notice && (
+        <p className="refresh-notice" role="status">
+          {notice}
+        </p>
+      )}
+      <DashboardView
+        section={section}
+        data={data}
+        range={range}
+        onRangeChange={changeRange}
+      />
+    </>
   );
 }

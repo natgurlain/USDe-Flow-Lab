@@ -99,6 +99,10 @@ are stored alongside observations. The API has a short shared response cache.
 The browser checks every five minutes while visible; this does not create new
 observations or guarantee provider freshness. Returning to the tab triggers a
 refresh; display ages are recalculated every minute. Learn does not fetch providers.
+Navigation, the header, and the footer stay mounted across routes. Initial loading
+uses quiet panel placeholders; subsequent navigation reuses the session's last
+verified readings while fetching updated observations. Refreshes update panels in
+place and only show a notice when a source cannot update.
 
 Supply, daily price history and yield use a 36-hour freshness window. Current
 market reference prices and on-chain metrics use two hours. Backing categories use

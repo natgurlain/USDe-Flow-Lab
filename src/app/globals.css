@@ -1725,3 +1725,52 @@ details[open] > summary .plus {
     max-width: none;
   }
 }
+
+/* Reserve panel space without replacing the persistent navigation shell. */
+.dashboard-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.placeholder-title {
+  width: min(280px, 70%);
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+.placeholder-card {
+  min-height: 220px;
+  gap: 24px;
+}
+.placeholder-line,
+.placeholder-value {
+  display: block;
+  border-radius: 5px;
+  background: #ffffff08;
+  width: 70%;
+  height: 12px;
+}
+.placeholder-value {
+  width: 60%;
+  height: 32px;
+}
+.placeholder-chart {
+  min-height: 360px;
+}
+@media (max-width: 767px) {
+  .placeholder-card {
+    min-height: 250px;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

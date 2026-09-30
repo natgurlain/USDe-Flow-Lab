@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import DashboardShell from "@/components/dashboard-shell";
 export const metadata: Metadata = {
   title: "Ethena Explained",
   description:
@@ -16,7 +17,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <DashboardShell>{children}</DashboardShell>
+      </body>
     </html>
   );
 }
