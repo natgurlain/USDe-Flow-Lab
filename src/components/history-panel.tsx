@@ -31,8 +31,10 @@ export function HistoryPanel({
       <div className="chart-footer">
         <span>
           {selected.length} observations ·{" "}
+          {selected[0]?.date.slice(0, 10) ?? "—"} to{" "}
+          {selected.at(-1)?.date.slice(0, 10) ?? "—"} ·{" "}
           {range === "24h"
-            ? "Daily resolution; not rolling 24-hour data"
+            ? "Sampled observations; not continuous 24-hour coverage"
             : "Period ends at latest available observation"}
         </span>
         <SourceLine metric={metric} />

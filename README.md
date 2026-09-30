@@ -5,13 +5,14 @@ the dollars, yield, and risks before exploring the technical details.
 
 ## Views
 
-- **Overview:** five headline readings, plain-English observations, supply and
+- **Overview:** four headline readings and a compact backing summary, plain-English observations, supply and
   daily price charts, USDe/sUSDe/ENA explanations, and a separate ecosystem panel.
 - **USDe Flow:** calendar-date supply comparisons, daily differences, aligned
-  network distribution, and an explanation of primary versus secondary activity.
-- **Yield:** sourced sUSDe annualized estimates, history, and an editable illustration.
-- **Backing & Risks:** official-report links, honest unavailable states, and six
-  plain-language risk explanations.
+  network distribution, and a bounded day of finalized Ethereum Mint/Redeem events.
+- **Yield:** realized trailing 7/30-day vault APY, current cooldown and staking
+  participation, provider estimate history, and an editable illustration.
+- **Backing & Risks:** dated issuer backing coverage, reserve and category
+  composition, official attestations, and six plain-language risk explanations.
 - **Learn:** short answers and a glossary. **Sources & methods:** every metric's
   calculation, coverage, unit, observation time, fetch time, and freshness window.
 
@@ -24,15 +25,27 @@ Connected public feeds: global USDe daily supply, network distribution at matchi
 sample dates, USDe reference price and daily price history, sUSDe estimated APY
 history, and ENA reference price. See [the source matrix](docs/source-matrix.md).
 
-The sUSDe figure is **estimated**, not a realized trailing APY. The inspected
-DeFiLlama adapter annualizes the latest reward distribution assuming an eight-hour
-interval and weekly compounding. No assumed cooldown duration is displayed.
+The Overview prefers **realized trailing seven-day APY**, calculated from the
+vault's underlying assets-per-share exchange rate at finalized Ethereum blocks.
+It falls back to the explicitly labeled provider estimate when realized readings
+are unavailable. Past returns are annualized, not forecasts. The estimate chart
+remains separate and uses DeFiLlama's annualization methodology.
 
-Backing composition, reserve figures, custody concentration, gross primary-market
-events, realized vault returns, and staking participation are **not connected**.
-They show unavailable states and source links. A supply difference is never
-presented as measured gross mint/redemption activity. Historical event narratives
-and the mixed live/demo ForceScore have been removed from production readings.
+Official issuer feeds provide timestamped backing assets, reserve fund, matching
+USDe supply and category composition. Coverage includes the reserve once and uses
+the issuer's matching denominator; category shares use their separately dated
+subtotal. These are issuer reports, not an independent solvency verification.
+Custodian/counterparty concentrations remain unavailable; dated attestations are
+linked through the official transparency dashboard.
+
+The flow adapter queries only the official Ethereum issuer's Mint/Redeem events
+in a bounded finalized-day window. It excludes transfers, bridges and secondary
+trading, deduplicates transaction/log identifiers and verifies the finalized anchor.
+It requires the entire query to succeed. It does not promise historical or
+multi-network coverage. Supply differences stay separate from gross issuance.
+
+See [integration methods and operating limits](docs/integrations.md) and
+[tracked review tickets](docs/review-tickets.md).
 
 Providers fail independently. Production never falls back to synthetic numbers.
 An open page retains last verified readings as stale; a new visit can use optional
@@ -58,8 +71,8 @@ pnpm start --hostname 0.0.0.0
 ```
 
 The process needs outbound HTTPS access to the public providers. Provider outages
-leave a usable interface with unavailable readings. No API keys are required for
-the currently connected feeds. The calculator remains a hypothetical illustration
+leave a usable interface with unavailable readings. Public defaults require no API keys. For reliable production archive and log
+queries, configure a suitable `ETHEREUM_RPC_URL` on the server. The calculator remains a hypothetical illustration
 and never initiates transactions.
 
 ## Verification
@@ -72,21 +85,24 @@ pnpm build
 ```
 
 Tests exercise real TypeScript modules through the installed compiler. They cover
-calendar ranges, exact supply baselines, missing days, peg units, compounded yield,
-source validation, independent failures, original provenance retention, and demo
-isolation. Charts expose observations in a keyboard-accessible table.
+calendar ranges, exact supply baselines, timestamp chart gaps, calculator bounds,
+backing denominators, category alignment, vault annualization, event deduplication,
+finalized-anchor changes, independent failures, provenance retention and demo isolation. Charts expose observations in a keyboard-accessible table.
 
 ## Caching and persistence
 
-Normalized, validated provider results are cached server-side for five minutes.
+Normalized, validated HTTP provider results are cached server-side for five minutes;
+finalized on-chain groups are cached for fifteen minutes.
 Raw global feeds exceed Next.js's 2 MB cache-entry limit, so they are fetched
 uncached inside the normalized cache wrapper. Their original acquisition times
 are stored alongside observations. The API has a short shared response cache.
 The browser checks every five minutes while visible; this does not create new
-observations or guarantee provider freshness.
+observations or guarantee provider freshness. Returning to the tab triggers a
+refresh; display ages are recalculated every minute. Learn does not fetch providers.
 
 Supply, daily price history and yield use a 36-hour freshness window. Current
-market reference prices use two hours. These are display thresholds, not risk
+market reference prices and on-chain metrics use two hours. Backing categories use
+24 hours; backing/reserve reports use 36 hours. These are display thresholds, not risk
 thresholds. Charts end at the latest available sample; 24H selects daily samples
 one day apart and does not claim an intraday or rolling 24-hour tape.
 
@@ -112,10 +128,9 @@ Hobby schedules can run once daily and have approximate execution timing; verify
 current plan limits before increasing ingestion frequency:
 https://vercel.com/docs/cron-jobs/usage-and-pricing
 
-Do not attempt large blockchain backfills inside page or cron requests. A future
-event indexer needs verified contracts, ABIs, bounded batches, durable checkpoints,
-reorg handling, idempotent event identifiers, and stated network coverage before
-gross mint/redemption data can be published.
+The bounded recent event adapter does not perform large blockchain backfills.
+Extending it to selectable historical ranges requires separate ingestion with
+durable checkpoints, bounded batches and documented network/contract coverage.
 
 **Production:** https://ethena-dashboard.vercel.app — Vercel project
 `ethena-dashboard` in `nat-4184s-projects`. Published after LAN review and explicit

@@ -9,10 +9,13 @@
 | sUSDe estimated APY            | https://yields.llama.fi/chart/66985a81-9c51-46ca-9977-42b4fe7bc6df                        | Timestamped APY; latest reward distribution annualized, weekly compounding              | Ethereum sUSDe vault only; not realized trailing return or guaranteed yield              |
 | Yield calculation              | https://github.com/DefiLlama/yield-server/blob/master/src/adaptors/ethena-usde/index.js   | Latest RewardsReceived amount × 3 × 365 / vault USD TVL; APR converted using 52 periods | Adapter assumes an eight-hour reward interval; methodology may change upstream           |
 | ENA price                      | https://coins.llama.fi/prices/current/coingecko:ethena                                    | Provider timestamp                                                                      | Market price; no claim of equity or revenue entitlement                                  |
-| Backing / reserve / custody    | https://app.ethena.fi/dashboards/transparency                                             | Official reported data and attestations                                                 | No documented public adapter verified; show unavailable and link to issuer               |
-| Gross mint / redemption events | Official verified contracts and indexed primary-market events required                    | Not connected                                                                           | Do not synthesize gross events from supply differences                                   |
-| Staking share / realized yield | Vault assets and dated assets-per-share observations required                             | Not connected                                                                           | Do not substitute token counts or third-party USD TVL                                    |
-| Cooldown                       | https://docs.ethena.fi/video-guides/how-to-stake-usde and current application             | Configurable contract parameter                                                         | No current on-chain read configured; link current rules instead of freezing old duration |
+| Backing / reserve | Official `/api/collateralization/status` | (Backing + reserve) / matching issuer supply | Same reporting timestamp; issuer-reported, reserve counted once |
+| Backing categories | Official `/api/collateral-breakdown/historical` | Latest common timestamp across all categories | Separate category subtotal; not added to coverage report |
+| Custody concentration | Official transparency attestations | Report links only | No inferred numerical exposures |
+| Gross mint / redemption | Official Ethereum issuer `0xe349…62d3` | Finalized Mint/Redeem `usde_amount`, bounded recent day | Ethereum issuer only; not historical or multi-network completeness |
+| Realized yield | Official Ethereum sUSDe vault `0x9d39…3497` | `convertToAssets(1e18)` change, actual elapsed 7/30 days | Annualized APY; future returns vary |
+| Staking participation | Same-block vault `totalAssets()` / canonical USDe `totalSupply()` | Underlying assets and issued supply | Excludes unvested rewards/cooldown silo; includes bridge-locked supply |
+| Cooldown | Ethereum vault `cooldownDuration()` | Current finalized-block setting | Can change; no historical constant hardcoded |
 | ENA governance                 | https://docs.ethena.fi/ and https://gov.ethenafoundation.com/                             | Educational role with official links                                                    | No news/events or numerical governance data invented                                     |
 | USDtb                          | https://usdtb.money/                                                                      | Separate treasury-backed product                                                        | Educational link; excluded from USDe supply totals                                       |
 
@@ -31,3 +34,6 @@ Implementation order:
 4. Test financial/date calculations and failures; lint, type-check, build and
    verify desktop/mobile in a browser. Serve on LAN for user review.
 5. Deploy to Vercel only after the user's explicit confirmation.
+
+New adapter details, verified sources and public-provider limits: [integrations](integrations.md).
+Review implementation tickets: [ticket index](review-tickets.md).

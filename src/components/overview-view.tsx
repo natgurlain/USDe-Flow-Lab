@@ -1,62 +1,27 @@
 "use client";
 import Link from "next/link";
-import {
-  ArrowRight,
-  ArrowUpRight,
-  CircleDollarSign,
-  Layers,
-  Vote,
-} from "lucide-react";
+import type { ReactNode } from "react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { TokenGuide } from "./token-guide";
 import { HistoryPanel } from "./history-panel";
 import { MetricCard, Panel } from "./primitives";
 import { formatCompact, formatMoney, formatSignedMoney } from "@/lib/format";
 import { pegDifference, type RangeKey } from "@/lib/metrics";
 import type { DashboardSnapshot } from "@/lib/types";
 
-export function TokenGuide() {
-  return (
-    <div className="token-guide">
-      {[
-        {
-          name: "USDe",
-          category: "The dollar",
-          icon: CircleDollarSign,
-          copy: "A synthetic dollar designed to track $1. Holding it alone does not automatically earn staking rewards.",
-        },
-        {
-          name: "sUSDe",
-          category: "The staked dollar",
-          icon: Layers,
-          copy: "Stake USDe to receive sUSDe. Protocol rewards can increase the USDe value of each share. Yield varies.",
-        },
-        {
-          name: "ENA",
-          category: "The governance token",
-          icon: Vote,
-          copy: "A token for Ethena governance. Its market price can move independently of USDe; holding it is not company ownership.",
-        },
-      ].map(({ name, category, icon: Icon, copy }) => (
-        <article key={name} className="token-card">
-          <div className="token-top">
-            <Icon size={22} strokeWidth={1.5} />
-            <span>{category}</span>
-          </div>
-          <h3>{name}</h3>
-          <p>{copy}</p>
-        </article>
-      ))}
-    </div>
-  );
-}
 export default function OverviewView({
   data,
   range,
+  chartControls,
 }: {
   data: DashboardSnapshot;
   range: RangeKey;
+  chartControls: ReactNode;
 }) {
   const { metrics: m } = data;
   const delta = m.supplyChange7d.value;
+  const realized = m.realized7d.value !== null;
+  const shownYield = realized ? m.realized7d : m.yield;
   const peg = pegDifference(m.price.value);
   const supplySummary =
     delta === null
@@ -68,41 +33,14 @@ export default function OverviewView({
       : `The latest available reference price is $${m.price.value.toFixed(4)}, ${Math.abs(peg!).toFixed(3)}% ${peg! >= 0 ? "above" : "below"} its $1 target.`;
   return (
     <>
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">
-            <span className="small-line" /> INDEPENDENT ETHENA DASHBOARD
-          </p>
-          <h1>
-            The big picture.
-            <br />
-            <span>In plain English.</span>
-          </h1>
-          <p className="hero-description">
-            Understand Ethena, its dollars, its yield, and its risks.
-            <br className="desktop-break" /> Start here. Explore the details
-            when you need them.
-          </p>
-          <Link href="/learn" className="hero-link">
-            New to Ethena? Start with the basics <ArrowRight size={16} />
-          </Link>
-        </div>
-        <div className="hero-art" aria-hidden="true">
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="dollar-mark">
-            e<span>≋</span>
-          </div>
-          <span className="art-caption">DOLLARS · YIELD · TRANSPARENCY</span>
-        </div>
+      <section className="overview-intro">
+        <p className="eyebrow">INDEPENDENT ETHENA DASHBOARD</p>
+        <h1>Ethena at a glance</h1>
+        <p>
+          USDe aims to track $1. sUSDe is staked USDe and receives variable
+          rewards.
+        </p>
       </section>
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">FIVE THINGS TO KNOW</p>
-          <h2>Ethena at a glance</h2>
-        </div>
-        <span className="quiet">Observation dates shown on every card</span>
-      </div>
       <div className="headline-grid">
         <MetricCard
           label="USDe market price"
@@ -138,27 +76,55 @@ export default function OverviewView({
           metric={m.supplyChange7d}
         />
         <MetricCard
-          label="sUSDe estimated yield"
+          label={realized ? "sUSDe yield · 7 days" : "sUSDe estimated yield"}
           value={
-            m.yield.value === null
+            shownYield.value === null
               ? "Unavailable"
-              : m.yield.value.toFixed(2) + "%"
+              : shownYield.value.toFixed(2) + "%"
           }
-          detail="Estimated annual yield · APY"
-          explanation="A recent reward rate expressed over a year. It can change."
-          metric={m.yield}
-        />
-        <MetricCard
-          label="Reported backing"
-          value={
-            m.backing.value === null
-              ? "Unavailable"
-              : m.backing.value.toFixed(2) + "%"
+          detail={
+            realized
+              ? "Realized · annualized APY"
+              : "Estimated annual yield · APY"
           }
-          detail="Issuer-reported coverage"
-          explanation="Reported assets relative to the dollars they back."
-          metric={m.backing}
+          explanation={
+            realized
+              ? "Past seven days, annualized. Future returns vary."
+              : "A recent reward rate expressed over a year. It can change."
+          }
+          metric={shownYield}
         />
+      </div>
+      <div className="quick-guide">
+        <Link href="/learn" className="text-link">
+          New here? Understand the basics <ArrowRight size={14} />
+        </Link>
+        <p>
+          <b>USDe</b> aims to track $1. Holding it alone does not earn staking
+          rewards.
+        </p>
+        <p>
+          <b>sUSDe</b> is staked USDe. Rewards can increase its value in USDe;
+          returns vary.
+        </p>
+        <p>
+          <b>Reported backing:</b>{" "}
+          {m.backing.value === null
+            ? "Not available here; check the issuer report below."
+            : `${m.backing.value.toFixed(2)}% including reserve · observed ${m.backing.observedAt?.slice(0, 10)} · ${m.backing.status === "stale" ? "last verified / delayed" : m.backing.status === "demo" ? "demo" : "issuer report"}.`}{" "}
+          Coverage alone does not guarantee immediate redemption.
+        </p>
+        <Link href="/backing" className="text-link">
+          What backs USDe, and what could go wrong? <ArrowRight size={14} />
+        </Link>
+        <a
+          className="text-link"
+          href="https://app.ethena.fi/dashboards/transparency"
+          target="_blank"
+          rel="noreferrer"
+        >
+          View the latest official backing reports ↗
+        </a>
       </div>
       <div className="plain-summary">
         <span className="summary-icon">↗</span>
@@ -170,6 +136,7 @@ export default function OverviewView({
           </p>
         </div>
       </div>
+      {chartControls}
       <div className="charts-grid">
         <HistoryPanel
           title="How much USDe is out there?"
@@ -183,7 +150,7 @@ export default function OverviewView({
         <HistoryPanel
           title="Is USDe close to $1?"
           eyebrow="PRICE OVER TIME"
-          description="Daily reference prices compared with the $1 target. Short-lived moves between samples may be missed."
+          description="Distance from $1 in percent. The chart shows at least −0.5% to +0.5% for context, not a safety threshold. Daily samples can miss short-lived moves."
           points={data.priceHistory}
           metric={data.priceHistoryMeta}
           range={range}

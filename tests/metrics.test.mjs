@@ -133,3 +133,25 @@ test("retained supply without a seven-day baseline keeps change unavailable", ()
   assert.equal(retained.metrics.supplyChange7d.value, null);
   assert.equal(retained.metrics.supplyChange7d.status, "unavailable");
 });
+
+test("calculator rejects out-of-range and fractional day inputs", () => {
+  for (const [amount, rate, days] of [
+    [1000, 5, 1e9],
+    [1000, 101, 365],
+    [1000, -1, 365],
+    [1e10, 5, 365],
+    [1000, 5, 1.5],
+  ])
+    assert.equal(metrics.illustrateYield(amount, rate, days), null);
+  assert.ok(Number.isFinite(metrics.illustrateYield(1e9, 100, 3650)));
+});
+test("chart data preserves elapsed time, breaks gaps and expresses peg percent", () => {
+  const data = metrics.chartObservations(
+    [point("2026-01-01", 1), point("2026-01-04", 0.99)],
+    true,
+  );
+  assert.equal(data.length, 3);
+  assert.equal(data[1].value, null);
+  assert.equal(data[2].timestamp - data[0].timestamp, 3 * metrics.DAY);
+  assert.ok(Math.abs(data[2].value + 1) < 1e-10);
+});

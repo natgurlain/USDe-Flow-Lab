@@ -23,7 +23,11 @@ export type MetricKey =
   | "enaPrice"
   | "stakingShare"
   | "minted"
-  | "redeemed";
+  | "redeemed"
+  | "realized7d"
+  | "realized30d"
+  | "cooldown"
+  | "vaultAssets";
 export type DashboardSnapshot = {
   version: 2;
   mode: "production" | "demo";
@@ -34,4 +38,24 @@ export type DashboardSnapshot = {
   yieldHistory: SeriesPoint[];
   priceHistoryMeta: Metric;
   chains: ChainPoint[];
+  providerFailures?: string[];
+  composition?: {
+    items: { name: string; value: number }[];
+    observedAt: string;
+    fetchedAt: string;
+    status: DataStatus;
+  };
+  backingReport?: {
+    assets: number;
+    reserve: number;
+    supply: number;
+    observedAt: string;
+  };
+  flows?: {
+    events: import("./onchain").FlowEvent[];
+    fromBlock: number;
+    toBlock: number;
+    start: string;
+    end: string;
+  };
 };

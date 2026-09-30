@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { DashboardSnapshot } from "@/lib/types";
 import { illustrateYield, type RangeKey } from "@/lib/metrics";
 import { HistoryPanel } from "./history-panel";
-import { MetricCard, Panel, Unavailable } from "./primitives";
+import { MetricCard, Panel } from "./primitives";
 export default function YieldView({
   data,
   range,
@@ -32,6 +32,32 @@ export default function YieldView({
           Staking USDe gives you sUSDe, a share in the staking vault. As rewards
           arrive, each share can represent more USDe.
         </p>
+      </div>
+      <div className="three-column">
+        {(["realized7d", "realized30d"] as const).map((key) => (
+          <MetricCard
+            key={key}
+            label={`Realized trailing ${key === "realized7d" ? "7" : "30"}-day yield`}
+            value={
+              data.metrics[key].value === null
+                ? "Unavailable"
+                : data.metrics[key].value!.toFixed(2) + "%"
+            }
+            detail="Annualized · APY"
+            explanation="What the vault exchange rate actually delivered over this window, expressed as an annual rate. Future returns vary."
+            metric={data.metrics[key]}
+          />
+        ))}
+        <MetricCard
+          label="Current unstaking cooldown"
+          value={
+            data.metrics.cooldown.value === null
+              ? "Unavailable"
+              : `${(data.metrics.cooldown.value / 86400).toLocaleString("en", { maximumFractionDigits: 2 })} days`
+          }
+          explanation="The latest observed contract setting. It can change; verify it in the official app before exiting."
+          metric={data.metrics.cooldown}
+        />
       </div>
       <div className="two-column">
         <MetricCard
@@ -84,7 +110,11 @@ export default function YieldView({
       />
       <div className="two-column">
         <Panel
-          title="What might that mean for $1,000?"
+          title={
+            gain === null
+              ? "Try a yield illustration"
+              : `What might that mean for ${number.format(Number(amount))}?`
+          }
           eyebrow="TRY AN ILLUSTRATION"
         >
           <p className="body-copy">
@@ -98,7 +128,8 @@ export default function YieldView({
               <input
                 type="number"
                 min="0"
-                step="100"
+                max="1000000000"
+                step="any"
                 value={amount}
                 onChange={(event) => setAmount(event.target.value)}
               />
@@ -109,7 +140,7 @@ export default function YieldView({
                 type="number"
                 min="0"
                 max="100"
-                step="0.1"
+                step="any"
                 value={rate}
                 onChange={(event) => setRate(event.target.value)}
               />
@@ -132,6 +163,12 @@ export default function YieldView({
               {gain === null ? "Enter valid values" : number.format(gain)}
             </strong>
           </div>
+          {gain === null && (
+            <p className="small-copy" role="alert">
+              Use an amount from 0 to 1 billion USDe, APY from 0 to 100%, and 0
+              to 3,650 whole days.
+            </p>
+          )}
           <p className="small-copy">
             {metric.value === null
               ? "The initial 5% is a hypothetical input because observed yield is unavailable. "
@@ -159,9 +196,9 @@ export default function YieldView({
             </li>
           </ul>
           <p className="small-copy">
-            A current cooldown contract read is not connected here. Check the
-            official application before acting; older documentation may describe
-            a past setting.
+            The cooldown above is read from a finalized Ethereum block. Check
+            the official application before acting: the setting can change, and
+            eligibility and market liquidity also affect your exit.
           </p>
           <a
             className="text-link"
@@ -173,14 +210,29 @@ export default function YieldView({
           </a>
         </Panel>
       </div>
-      <Panel title="Realized returns and staking participation">
-        <Unavailable title="Vault observations are not connected">
-          Realized trailing yield requires dated assets-per-share observations.
-          Staking participation requires underlying USDe assets divided by
-          circulating supply. We do not replace those values with share counts
-          or USD market valuations.
-        </Unavailable>
-      </Panel>
+      <div className="two-column">
+        <MetricCard
+          label="USDe held in the staking vault"
+          value={
+            data.metrics.vaultAssets.value === null
+              ? "Unavailable"
+              : number.format(data.metrics.vaultAssets.value)
+          }
+          detail="USDe valued at its $1 target"
+          explanation="Underlying assets, rather than the number or market price of sUSDe shares. Excludes the cooldown silo and unvested rewards."
+          metric={data.metrics.vaultAssets}
+        />
+        <MetricCard
+          label="Share of issued USDe in the vault"
+          value={
+            data.metrics.stakingShare.value === null
+              ? "Unavailable"
+              : data.metrics.stakingShare.value.toFixed(2) + "%"
+          }
+          explanation="Vault assets divided by canonical USDe supply, read at the same block. Bridge-locked USDe remains in this denominator."
+          metric={data.metrics.stakingShare}
+        />
+      </div>
     </>
   );
 }

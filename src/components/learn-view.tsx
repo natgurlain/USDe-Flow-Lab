@@ -1,5 +1,5 @@
 import { Panel } from "./primitives";
-import { TokenGuide } from "./overview-view";
+import { TokenGuide } from "./token-guide";
 const lessons = [
   {
     q: "What is Ethena?",

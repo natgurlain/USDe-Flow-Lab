@@ -11,12 +11,13 @@ import {
   ShieldCheck,
   TrendingUp,
 } from "lucide-react";
-import OverviewView from "./overview-view";
-import TapeView from "./tape-view";
-import YieldView from "./yield-view";
-import BackingView from "./backing-view";
+import dynamic from "next/dynamic";
+const OverviewView = dynamic(() => import("./overview-view"));
+const TapeView = dynamic(() => import("./tape-view"));
+const YieldView = dynamic(() => import("./yield-view"));
+const BackingView = dynamic(() => import("./backing-view"));
 import LearnView from "./learn-view";
-import MethodologyView from "./methodology-view";
+const MethodologyView = dynamic(() => import("./methodology-view"));
 import {
   RANGE_OPTIONS,
   parseRange,
@@ -54,6 +55,18 @@ function ageSnapshot(snapshot: DashboardSnapshot): DashboardSnapshot {
       ]),
     ) as DashboardSnapshot["metrics"],
     priceHistoryMeta: withFreshness(snapshot.priceHistoryMeta),
+    composition: snapshot.composition
+      ? {
+          ...snapshot.composition,
+          status: withFreshness({
+            ...snapshot.metrics.backing,
+            value: 1,
+            status: snapshot.composition.status,
+            observedAt: snapshot.composition.observedAt,
+            maxAgeHours: 24,
+          }).status,
+        }
+      : undefined,
   };
 }
 export default function DashboardWorkspace({
@@ -72,7 +85,7 @@ export default function DashboardWorkspace({
   const pending = useRef(false);
   const request = useRef<AbortController | null>(null);
   const refresh = useCallback(async () => {
-    if (pending.current) return;
+    if (section === "learn" || pending.current) return;
     pending.current = true;
     setRefreshing(true);
     const controller = new AbortController();
@@ -88,11 +101,18 @@ export default function DashboardWorkspace({
       if (
         snapshot.version !== 2 ||
         !snapshot.metrics ||
+        !["realized7d", "realized30d", "cooldown", "vaultAssets"].every(
+          (key) => key in snapshot.metrics,
+        ) ||
         !Array.isArray(snapshot.supplyHistory)
       )
         throw new Error("Invalid dashboard response");
       setData((previous) => ageSnapshot(retainVerified(snapshot, previous)));
-      setNotice("Data checked. Observation dates are shown with each metric.");
+      setNotice(
+        snapshot.providerFailures?.length
+          ? `Checked available sources. ${snapshot.providerFailures.length} source integrations could not update; retained readings keep their original dates.`
+          : "Data checked. Observation dates are shown with each metric.",
+      );
     } catch {
       if (!controller.signal.aborted || request.current === controller) {
         setData((previous) => ({
@@ -122,8 +142,19 @@ export default function DashboardWorkspace({
         request.current = null;
       }
     }
-  }, []);
+  }, [section]);
   useEffect(() => {
+    if (section === "learn") return;
+    const onReturn = () => {
+      setData((previous) => ageSnapshot(previous));
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onReturn);
+    const ageTimer = window.setInterval(
+      () => setData((previous) => ageSnapshot(previous)),
+      60_000,
+    );
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 300_000);
@@ -136,11 +167,14 @@ export default function DashboardWorkspace({
     window.addEventListener("popstate", onPop);
     return () => {
       window.clearInterval(timer);
+      window.clearInterval(ageTimer);
+      window.removeEventListener("focus", onReturn);
+      document.removeEventListener("visibilitychange", onReturn);
       window.removeEventListener("popstate", onPop);
       request.current?.abort();
       request.current = null;
     };
-  }, [refresh]);
+  }, [refresh, section]);
   function changeRange(next: RangeKey) {
     setRange(next);
     const url = new URL(window.location.href);
@@ -156,6 +190,26 @@ export default function DashboardWorkspace({
   const available = Object.values(data.metrics).filter(
     (metric) => metric.value !== null,
   ).length;
+  const rangeControls = (
+    <div className="range-toolbar">
+      <span>
+        Chart period <small>Charts only · headline windows stay fixed</small>
+      </span>
+      <div role="group" aria-label="Chart time range">
+        {RANGE_OPTIONS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            aria-pressed={range === item.key}
+            className={range === item.key ? "selected" : ""}
+            onClick={() => changeRange(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">
@@ -236,13 +290,17 @@ export default function DashboardWorkspace({
               className={`public-status ${data.mode === "demo" ? "demo" : ""}`}
             >
               <i />
-              {data.mode === "demo" ? "Demo data" : "Public data"}
+              {section === "learn"
+                ? "Learning guide"
+                : data.mode === "demo"
+                  ? "Demo data"
+                  : "Public data"}
             </span>
             <button
               type="button"
               className="refresh-button"
               onClick={() => void refresh()}
-              disabled={refreshing}
+              disabled={refreshing || section === "learn"}
               aria-label="Refresh dashboard data"
             >
               <RefreshCw size={15} className={refreshing ? "spinning" : ""} />
@@ -269,38 +327,27 @@ export default function DashboardWorkspace({
               dataset, not an observation of Ethena.
             </div>
           )}
-          {available === 0 && data.mode === "production" && (
-            <div className="notice" role="status">
-              Public providers are currently unavailable. The dashboard remains
-              usable, and missing readings are clearly marked.
-            </div>
-          )}
+          {section !== "learn" &&
+            available === 0 &&
+            data.mode === "production" && (
+              <div className="notice" role="status">
+                Public providers are currently unavailable. The dashboard
+                remains usable, and missing readings are clearly marked.
+              </div>
+            )}
           {notice && (
             <p className="refresh-notice" role="status">
               {notice}
             </p>
           )}
-          {isChartPage && (
-            <div className="range-toolbar">
-              <span>
-                Explore a period <small>ending at the latest observation</small>
-              </span>
-              <div role="group" aria-label="Chart time range">
-                {RANGE_OPTIONS.map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    aria-pressed={range === item.key}
-                    className={range === item.key ? "selected" : ""}
-                    onClick={() => changeRange(item.key)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {isChartPage && section !== "overview" && rangeControls}
+          {section === "overview" && (
+            <OverviewView
+              data={data}
+              range={range}
+              chartControls={rangeControls}
+            />
           )}
-          {section === "overview" && <OverviewView data={data} range={range} />}
           {section === "flow" && <TapeView data={data} range={range} />}
           {section === "yield" && <YieldView data={data} range={range} />}
           {section === "backing" && <BackingView data={data} />}

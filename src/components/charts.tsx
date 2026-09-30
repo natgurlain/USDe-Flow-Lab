@@ -12,6 +12,7 @@ import {
   Bar,
 } from "recharts";
 import type { SeriesPoint } from "@/lib/types";
+import { chartObservations } from "@/lib/metrics";
 import { formatMoney } from "@/lib/format";
 
 export default function HistoryChart({
@@ -41,6 +42,10 @@ export default function HistoryChart({
       : kind === "yield"
         ? value.toFixed(2) + "%"
         : formatMoney(value);
+  const chartData = chartObservations(points, isPrice);
+  const formatAxis = isPrice
+    ? (value: number) => `${value > 0 ? "+" : ""}${value.toFixed(2)}%`
+    : formatValue;
   const first = points[0],
     last = points[points.length - 1];
   return (
@@ -52,7 +57,7 @@ export default function HistoryChart({
       >
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           <ComposedChart
-            data={points}
+            data={chartData}
             margin={{ top: 16, right: 12, left: 0, bottom: 0 }}
             accessibilityLayer
           >
@@ -64,8 +69,11 @@ export default function HistoryChart({
             </defs>
             <CartesianGrid stroke="#ffffff0b" vertical={false} />
             <XAxis
-              dataKey="date"
-              tickFormatter={(date: string) =>
+              dataKey="timestamp"
+              type="number"
+              scale="time"
+              domain={["dataMin", "dataMax"]}
+              tickFormatter={(date: number) =>
                 new Intl.DateTimeFormat("en", {
                   month: "short",
                   day: "numeric",
@@ -81,14 +89,14 @@ export default function HistoryChart({
               domain={
                 isPrice
                   ? [
-                      (min: number) => Math.min(min, 1) - 0.001,
-                      (max: number) => Math.max(max, 1) + 0.001,
+                      (min: number) => Math.min(min, -0.5),
+                      (max: number) => Math.max(max, 0.5),
                     ]
                   : kind === "change"
                     ? ["auto", "auto"]
                     : [0, "auto"]
               }
-              tickFormatter={formatValue}
+              tickFormatter={formatAxis}
               width={70}
               axisLine={false}
               tickLine={false}
@@ -96,10 +104,15 @@ export default function HistoryChart({
             />
             <Tooltip
               labelFormatter={(label) =>
-                String(label).replace("T", " ").slice(0, 19) + " UTC"
+                new Date(Number(label))
+                  .toISOString()
+                  .replace("T", " ")
+                  .slice(0, 19) + " UTC"
               }
               formatter={(value) => [
-                formatValue(Number(value)),
+                isPrice
+                  ? `${formatAxis(Number(value))} ($${(1 + Number(value) / 100).toFixed(4)})`
+                  : formatValue(Number(value)),
                 kind === "yield" ? "Estimated APY" : label,
               ]}
               contentStyle={{
@@ -111,11 +124,11 @@ export default function HistoryChart({
             />
             {isPrice && (
               <ReferenceLine
-                y={1}
+                y={0}
                 stroke="#a1aba7"
                 strokeDasharray="4 4"
                 label={{
-                  value: "$1 target",
+                  value: "$1 target · 0%",
                   position: "insideTopRight",
                   fill: "#a1aba7",
                   fontSize: 11,

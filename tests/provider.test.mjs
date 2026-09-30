@@ -87,3 +87,55 @@ test("synthetic values are available only in explicit demo mode", async () => {
   assert.equal(data.metrics.supply.status, "demo");
   assert.ok(data.metrics.supply.value > 0);
 });
+
+test("issuer backing report preserves reporting time and reserve denominator", () => {
+  const report = p.parseBacking({
+    timestamp: "2026-01-01T12:00:00Z",
+    totalBackingAssetsInUsd: 100,
+    totalReserveFundInUsd: 2,
+    totalTokenSupplyInUsd: 100,
+  });
+  assert.equal(((report.assets + report.reserve) / report.supply) * 100, 102);
+  assert.equal(report.observedAt, "2026-01-01T12:00:00.000Z");
+  assert.throws(() =>
+    p.parseBacking({
+      timestamp: "2026-01-01",
+      totalBackingAssetsInUsd: 100,
+      totalReserveFundInUsd: 2,
+      totalTokenSupplyInUsd: 0,
+    }),
+  );
+});
+test("category shares require a common timestamp rather than mixing latest values", () => {
+  const r = p.parseComposition({
+    breakdown: {
+      A: [
+        { timestamp: date("2026-01-01"), value: 60 },
+        { timestamp: date("2026-01-02"), value: 99 },
+      ],
+      B: [{ timestamp: date("2026-01-01"), value: 40 }],
+    },
+  });
+  assert.equal(r.observedAt, "2026-01-01T00:00:00.000Z");
+  assert.equal(r.items[0].value, 60);
+  assert.throws(() =>
+    p.parseComposition({
+      breakdown: {
+        A: [{ timestamp: date("2026-01-01"), value: 60 }],
+        B: [{ timestamp: date("2026-01-02"), value: 40 }],
+      },
+    }),
+  );
+});
+test("provider failures have sanitized names and never leak errors or credentials", async () => {
+  const logs = [];
+  const provider = loadModule("data-provider", {
+    console: { warn: (s) => logs.push(s) },
+  });
+  const result = await provider.getProviderSnapshot(async () => {
+    throw new Error("secret-rpc-key");
+  });
+  assert.ok(result.providerFailures.includes("backing"));
+  assert.ok(logs.length > 0);
+  assert.ok(logs.every((s) => !s.includes("secret-rpc-key")));
+});

@@ -1,16 +1,19 @@
 import { connection } from "next/server";
 import DashboardWorkspace, { type Section } from "./dashboard-workspace";
-import { getInitialDashboardData } from "@/lib/data-provider";
+import { emptySnapshot, getInitialDashboardData } from "@/lib/data-provider";
 import { parseRange } from "@/lib/metrics";
 export type PageQuery = { searchParams: Promise<{ range?: string }> };
 export async function DashboardPage({
   section,
   searchParams,
 }: PageQuery & { section: Section }) {
-  await connection();
+  const educational = section === "learn";
+  if (!educational) await connection();
   const [query, data] = await Promise.all([
-    searchParams,
-    getInitialDashboardData(),
+    educational ? Promise.resolve({ range: undefined }) : searchParams,
+    educational
+      ? Promise.resolve(emptySnapshot("1970-01-01T00:00:00.000Z"))
+      : getInitialDashboardData(),
   ]);
   return (
     <DashboardWorkspace

@@ -109,15 +109,65 @@ export default function TapeView({
           title="USDe created and redeemed"
           description="Verified gross flow totals"
         >
-          <Unavailable
-            title="Primary-market events are not connected"
-            href="https://docs.ethena.fi/technical-design/overview"
-          >
-            A measured mint/redemption tape needs verified contract events and
-            an indexer. Supply changes above cannot tell us the separate gross
-            totals. No transaction identities or hashes are invented.
-          </Unavailable>
-          <SourceLine metric={data.metrics.minted} />
+          {data.flows ? (
+            <>
+              <p className="body-copy">
+                Ethereum issuer only ·{" "}
+                {data.flows.start.replace("T", " ").slice(0, 16)} to{" "}
+                {data.flows.end.replace("T", " ").slice(0, 16)} UTC. This
+                finalized window is independent of the chart period.
+              </p>
+              <p className="body-copy">
+                <b>USDe created:</b> {formatCompact(data.metrics.minted.value!)}{" "}
+                · <b>USDe redeemed:</b>{" "}
+                {formatCompact(data.metrics.redeemed.value!)} ·{" "}
+                <b>Net issuance:</b>{" "}
+                {formatSignedMoney(
+                  data.metrics.minted.value! - data.metrics.redeemed.value!,
+                )}
+              </p>
+              <SourceLine metric={data.metrics.minted} expanded />
+              <SourceLine metric={data.metrics.redeemed} />
+              <details className="learn-detail">
+                <summary>
+                  Recent verified transactions ({data.flows.events.length}{" "}
+                  events)
+                </summary>
+                <ul className="simple-list">
+                  {data.flows.events.slice(0, 20).map((event) => (
+                    <li key={`${event.transactionHash}:${event.logIndex}`}>
+                      <a
+                        className="text-link"
+                        href={`https://etherscan.io/tx/${event.transactionHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {event.kind === "mint" ? "Created" : "Redeemed"}{" "}
+                        {formatCompact(event.amount)} USDe · block{" "}
+                        {event.blockNumber} ·{" "}
+                        {event.transactionHash.slice(0, 10)}… ↗
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+              <p className="small-copy">
+                Only Mint/Redeem events from the official Ethereum issuer
+                contract are counted. Transfers, bridging, other contracts, and
+                secondary trading are excluded. This is a recent window, not
+                complete historical or multi-network coverage.
+              </p>
+            </>
+          ) : (
+            <Unavailable
+              title="Primary-market readings could not update"
+              href="https://docs.ethena.fi/api-documentation/overview"
+            >
+              The adapter reads a bounded day of finalized Ethereum Mint/Redeem
+              events. Its complete query must succeed before totals appear.
+              Supply differences above are not gross creation or redemption.
+            </Unavailable>
+          )}
         </Panel>
         <Panel
           title="Where is USDe circulating?"

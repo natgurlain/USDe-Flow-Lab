@@ -1628,3 +1628,100 @@ details[open] > summary .plus {
     animation: none !important;
   }
 }
+
+/* Compact overview and readable provenance across screen sizes. */
+.overview-intro h1 {
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+.overview-intro > p:not(.eyebrow) {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 850px;
+  margin: 12px 0;
+}
+.headline-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.source-line,
+.observation,
+.data-status,
+.method-details summary {
+  font-size: 11px;
+}
+.method-details p,
+.metric-detail {
+  font-size: 12px;
+}
+.quick-guide {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.quick-guide b {
+  color: var(--accent);
+}
+@media (max-width: 1100px) {
+  .headline-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .headline-grid .metric-card:nth-child(n + 4) {
+    grid-column: auto;
+  }
+}
+@media (max-width: 767px) {
+  .main-content {
+    padding: 16px;
+    gap: 18px;
+  }
+  .overview-intro h1 {
+    font-size: 26px;
+  }
+  .overview-intro > p:not(.eyebrow) {
+    font-size: 13px;
+  }
+  .headline-grid .metric-card:last-child {
+    grid-column: auto;
+  }
+  .headline-grid .metric-card {
+    padding: 12px;
+  }
+  .headline-grid .metric-value {
+    font-size: 25px;
+    margin-top: 8px;
+  }
+  .headline-grid .metric-explanation {
+    margin: 8px 0;
+    min-height: 0;
+    font-size: 12px;
+  }
+  .range-toolbar {
+    flex-wrap: wrap;
+  }
+  .range-toolbar > span {
+    max-width: none;
+    font-size: 12px;
+  }
+  .range-toolbar small {
+    display: block;
+    font-size: 11px;
+  }
+  .source-line,
+  .observation,
+  .data-status,
+  .method-details summary {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 380px) {
+  .range-toolbar > span {
+    display: block;
+    max-width: none;
+  }
+}

@@ -55,11 +55,16 @@ export function illustrateYield(
   if (
     ![amount, apy, days].every(Number.isFinite) ||
     amount < 0 ||
-    apy <= -100 ||
-    days < 0
+    amount > 1_000_000_000 ||
+    apy < 0 ||
+    apy > 100 ||
+    !Number.isInteger(days) ||
+    days < 0 ||
+    days > 3650
   )
     return null;
-  return amount * (Math.pow(1 + apy / 100, days / 365) - 1);
+  const gain = amount * (Math.pow(1 + apy / 100, days / 365) - 1);
+  return Number.isFinite(gain) ? gain : null;
 }
 export function withFreshness(metric: Metric, now = Date.now()): Metric {
   if (metric.status === "demo" || metric.value === null || !metric.observedAt)
@@ -88,6 +93,13 @@ export function retainVerified(
   )
     return next;
   const result = { ...next, metrics: { ...next.metrics } };
+  if (
+    previous.composition &&
+    (!next.composition ||
+      Date.parse(previous.composition.observedAt) >
+        Date.parse(next.composition.observedAt))
+  )
+    result.composition = { ...previous.composition, status: "stale" };
   for (const key of Object.keys(next.metrics) as Array<
     keyof DashboardSnapshot["metrics"]
   >) {
@@ -112,6 +124,8 @@ export function retainVerified(
         result.chains = previous.chains;
       }
       if (key === "yield") result.yieldHistory = previous.yieldHistory;
+      if (key === "backing") result.backingReport = previous.backingReport;
+      if (key === "minted" || key === "redeemed") result.flows = previous.flows;
     }
   }
   if (
@@ -135,4 +149,25 @@ export function retainVerified(
       "Latest daily supply minus the observation exactly seven calendar days earlier.",
   };
   return result;
+}
+
+// Preserve elapsed time and break lines across missing daily observations.
+export function chartObservations(points: SeriesPoint[], price = false) {
+  return points.flatMap((point, index) => {
+    const timestamp = Date.parse(point.date);
+    const previous = points[index - 1];
+    const gap =
+      previous && timestamp - Date.parse(previous.date) > DAY * 1.5
+        ? [
+            {
+              timestamp: Date.parse(previous.date) + DAY,
+              value: null as number | null,
+            },
+          ]
+        : [];
+    return [
+      ...gap,
+      { timestamp, value: price ? (point.value - 1) * 100 : point.value },
+    ];
+  });
 }

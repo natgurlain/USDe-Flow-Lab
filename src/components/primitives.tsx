@@ -33,8 +33,27 @@ export function Panel({
 }
 export function observedLabel(value: string | null) {
   return value
-    ? value.replace("T", " ").slice(0, 16) + " UTC"
+    ? new Intl.DateTimeFormat("en", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "UTC",
+        hour12: false,
+      }).format(new Date(value)) + " UTC"
     : "No observation";
+}
+function readableSource(url: string) {
+  if (url.includes("stablecoins.llama.fi"))
+    return "https://defillama.com/stablecoin/ethena-usde";
+  if (url.includes("yields.llama.fi"))
+    return "https://defillama.com/yields/pool/66985a81-9c51-46ca-9977-42b4fe7bc6df";
+  if (url.includes("coins.llama.fi"))
+    return url.includes("coingecko:ethena")
+      ? "https://defillama.com/protocol/ethena"
+      : "https://defillama.com/stablecoin/ethena-usde";
+  return url;
 }
 export function SourceLine({
   metric,
@@ -53,16 +72,30 @@ export function SourceLine({
     <div className="source-block">
       <div className="source-line">
         <span className={`data-status ${metric.status}`}>{status}</span>
-        <a href={metric.sourceUrl} target="_blank" rel="noreferrer">
+        <a
+          href={readableSource(metric.sourceUrl)}
+          target="_blank"
+          rel="noreferrer"
+        >
           {metric.source}
           <ArrowUpRight size={12} />
         </a>
       </div>
-      <p className="observation">{observedLabel(metric.observedAt)}</p>
+      <p className="observation">
+        {metric.observedAt
+          ? metric.coverage.toLowerCase().includes("daily")
+            ? "Daily observation · "
+            : "Observed · "
+          : ""}
+        {observedLabel(metric.observedAt)}
+      </p>
       {expanded && (
         <details className="method-details">
           <summary>Source & calculation</summary>
           <p>{metric.methodology}</p>
+          <a href={metric.sourceUrl} target="_blank" rel="noreferrer">
+            Inspect the underlying source ↗
+          </a>
           <p>Coverage: {metric.coverage}</p>
           <p>
             Unit: {metric.unit}. Freshness window: {metric.maxAgeHours} hours.

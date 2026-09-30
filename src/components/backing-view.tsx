@@ -1,5 +1,5 @@
 import type { DashboardSnapshot } from "@/lib/types";
-import { Panel, MetricCard, Unavailable } from "./primitives";
+import { Panel, MetricCard, SourceLine, Unavailable } from "./primitives";
 import { formatMoney } from "@/lib/format";
 const risks = [
   {
@@ -34,6 +34,8 @@ const risks = [
   },
 ];
 export default function BackingView({ data }: { data: DashboardSnapshot }) {
+  const compositionTotal =
+    data.composition?.items.reduce((n, item) => n + item.value, 0) ?? 0;
   return (
     <>
       <div className="page-intro">
@@ -49,6 +51,29 @@ export default function BackingView({ data }: { data: DashboardSnapshot }) {
           as the headline ratio.
         </p>
       </div>
+      <Panel title="Read the latest issuer reports" eyebrow="DATED EVIDENCE">
+        <a
+          className="text-link"
+          href="https://app.ethena.fi/dashboards/transparency"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Official transparency dashboard and custodian attestations ↗
+        </a>
+        <p className="body-copy">
+          Backing and reserves below are issuer-reported observations, not an
+          independent audit or a promise of immediate redemption.
+        </p>
+        {data.backingReport && (
+          <p className="small-copy">
+            Reported assets: {formatMoney(data.backingReport.assets)} · Reserve:{" "}
+            {formatMoney(data.backingReport.reserve)} · Matching reported USDe
+            supply: {formatMoney(data.backingReport.supply)}. Reporting date:{" "}
+            {data.backingReport.observedAt.replace("T", " ").slice(0, 16)} UTC.
+            This denominator can differ from the daily supply provider.
+          </p>
+        )}
+      </Panel>
       <div className="two-column">
         <MetricCard
           label="Reported backing coverage"
@@ -57,7 +82,7 @@ export default function BackingView({ data }: { data: DashboardSnapshot }) {
               ? "Unavailable"
               : data.metrics.backing.value.toFixed(2) + "%"
           }
-          explanation="A verified ratio needs dated asset values, circulating supply, and a clear statement of whether the reserve is included."
+          explanation="Issuer-reported backing assets plus the reserve fund, divided by issuer-reported USDe supply at the same timestamp. Reserve is included once."
           metric={data.metrics.backing}
         />
         <MetricCard
@@ -78,14 +103,60 @@ export default function BackingView({ data }: { data: DashboardSnapshot }) {
             stablecoins, and offsetting derivatives positions. The mix changes
             over time; the latest allocation must come from dated reports.
           </p>
-          <Unavailable
-            title="Current allocation is unavailable"
-            href="https://app.ethena.fi/dashboards/transparency"
-          >
-            No verified public data adapter is connected for backing composition
-            or reserve allocation. The official transparency dashboard provides
-            reporting and links to attestations.
-          </Unavailable>
+          {data.composition ? (
+            <>
+              <div className="chain-list">
+                {data.composition.items.map((item) => (
+                  <div className="chain-row" key={item.name}>
+                    <div>
+                      <span>{item.name}</span>
+                      <b>
+                        {((item.value / compositionTotal) * 100).toFixed(1)}% ·{" "}
+                        {formatMoney(item.value)}
+                      </b>
+                    </div>
+                    <div className="chain-track">
+                      <span
+                        style={{
+                          width: `${(item.value / compositionTotal) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="small-copy">
+                Shares use the aligned category subtotal (
+                {formatMoney(compositionTotal)}). Category observations may have
+                a different date or scope from the backing coverage report
+                above; they are not added to that total. Category names are the
+                issuer’s labels.
+              </p>
+              <SourceLine
+                metric={{
+                  ...data.metrics.backing,
+                  value: compositionTotal,
+                  status: data.composition.status,
+                  observedAt: data.composition.observedAt,
+                  fetchedAt: data.composition.fetchedAt,
+                  unit: "USD",
+                  methodology:
+                    "Latest timestamp present in every issuer backing category; shares divide each category by their subtotal. Not combined with the separate reserve report.",
+                  coverage: "Issuer-reported backing categories",
+                  maxAgeHours: 24,
+                }}
+                expanded
+              />
+            </>
+          ) : (
+            <Unavailable
+              title="Current allocation could not update"
+              href="https://app.ethena.fi/dashboards/transparency"
+            >
+              Aligned, dated issuer category observations are required. Missing
+              categories are not estimated.
+            </Unavailable>
+          )}
           <a
             href="https://docs.ethena.fi/resources/usde-terms-and-conditions"
             target="_blank"

@@ -1,6 +1,10 @@
 import type { DashboardSnapshot, MetricKey } from "@/lib/types";
 import { Panel, SourceLine } from "./primitives";
 const names: Record<MetricKey, string> = {
+  realized7d: "Realized trailing 7-day APY",
+  realized30d: "Realized trailing 30-day APY",
+  cooldown: "Current unstaking cooldown",
+  vaultAssets: "Underlying staked USDe assets",
   supply: "USDe supply",
   price: "USDe price",
   supplyChange7d: "Seven-day supply change",
@@ -99,7 +103,9 @@ export default function MethodologyView({ data }: { data: DashboardSnapshot }) {
             </li>
             <li>
               Supply charts value USDe at its $1 target. Price charts measure a
-              separate market reference.
+              separate market reference expressed as percentage distance from
+              $1. The visible ±0.5% minimum range is visual context, not a
+              safety threshold.
             </li>
           </ul>
         </Panel>
@@ -124,14 +130,32 @@ export default function MethodologyView({ data }: { data: DashboardSnapshot }) {
           </p>
         </Panel>
       </div>
+      <Panel title="Realized vault returns and current exit settings">
+        <p className="body-copy">
+          Realized 7/30-day APY uses changes in convertToAssets(1e18) at
+          finalized Ethereum blocks, annualized with the actual elapsed seconds
+          and a 365-day year. It excludes market-price changes, taxes and fees.
+          It is separate from the reward-distribution estimate above. Cooldown
+          and underlying vault assets are read from current finalized contract
+          state; the setting can subsequently change.
+        </p>
+        <p className="small-copy">
+          The flow totals cover a separate bounded day of finalized events from
+          the official Ethereum issuer contract. Chart range selection does not
+          extend that coverage. No bridge or secondary-transfer activity is
+          counted.
+        </p>
+      </Panel>
       <Panel title="Refresh and persistence">
         <p className="body-copy">
-          The browser checks every five minutes while visible. Upstream requests
-          are cached for five minutes; shared API responses may be cached
-          briefly. None of these intervals changes an observation’s original
-          date. Optional database storage preserves verified daily snapshots.
-          Without storage, provider outages show unavailable data on a new
-          visit; an open page can retain its last verified readings.
+          The browser checks every five minutes while visible and when returning
+          to the tab. Display freshness ages every minute. HTTP upstream
+          requests are cached for five minutes, finalized on-chain groups for
+          fifteen minutes; shared API responses may be cached briefly. None of
+          these intervals changes an observation’s original date. Optional
+          database storage preserves verified daily snapshots. Without storage,
+          provider outages show unavailable data on a new visit; an open page
+          can retain its last verified readings.
         </p>
       </Panel>
     </>
