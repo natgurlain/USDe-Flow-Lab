@@ -9,6 +9,7 @@
 | [#5](https://github.com/natgurlain/USDe-Flow-Lab/issues/5) | Issuer backing/reserve and aligned category composition, attestation links | Real issuer responses and report validation tests |
 | [#6](https://github.com/natgurlain/USDe-Flow-Lab/issues/6) | Bounded finalized-day issuer events and explorer links | Real event query, deduplication, outage and anchor-change tests |
 | [#7](https://github.com/natgurlain/USDe-Flow-Lab/issues/7) | Provider-independent Learn, conditional bundles and sanitized diagnostics | Production build, browser network and outage tests |
+| [#8](https://github.com/natgurlain/USDe-Flow-Lab/issues/8) | Explicit compact-currency fraction digits for matching Node/Chrome rendering | Regression test and fresh production hydration checks |
 
 Implementation and operating limitations: [integrations](integrations.md).
 The tickets cover the review improvements, not a claim of complete multi-network
