@@ -137,8 +137,10 @@ durable checkpoints, bounded batches and documented network/contract coverage.
 user approval. The production pages and data API were checked without authentication;
 all main pages returned HTTP 200 and the browser loaded the charts without errors.
 
-The checkout is linked through `.vercel/project.json` (gitignored). This release
-was uploaded directly with the Vercel CLI. GitHub repository connection failed,
-so automatic deployment on Git pushes is not configured. Future releases can use
-`vercel deploy --prod --scope nat-4184s-projects` until repository access is repaired.
+The checkout is linked through `.vercel/project.json` (gitignored). The Vercel
+project is connected to `natgurlain/USDe-Flow-Lab`, with `main` as its production
+branch and automatic Git deployments enabled. Every push to `main` starts a
+production build; the production domain updates after that build succeeds.
+Feature branches use Vercel Preview deployments. Manual recovery deployments can
+use `vercel deploy --prod --scope nat-4184s-projects`.
 Optional database persistence is not enabled or verified against a live database.
