@@ -190,6 +190,16 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
             <div>
               <b>ethena explained</b>
               <span>Understand first. Explore further.</span>
+              <span>
+                Built by{" "}
+                <a
+                  href="https://x.com/natgurlain"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  @natgurlain
+                </a>
+              </span>
             </div>
             <p>
               Independent dashboard · Not affiliated with Ethena ·
