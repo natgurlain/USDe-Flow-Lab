@@ -163,7 +163,7 @@ user approval. The production pages and data API were checked without authentica
 all main pages returned HTTP 200 and the browser loaded the charts without errors.
 
 The checkout is linked through `.vercel/project.json` (gitignored). The Vercel
-project is connected to `natgurlain/USDe-Flow-Lab`, with `main` as its production
+project is connected to `natgurlain/ethena-dashboard`, with `main` as its production
 branch and automatic Git deployments enabled. Every push to `main` starts a
 production build; the production domain updates after that build succeeds.
 Feature branches use Vercel Preview deployments. Manual recovery deployments can
