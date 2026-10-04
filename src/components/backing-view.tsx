@@ -1,6 +1,7 @@
 import type { DashboardSnapshot } from "@/lib/types";
-import { Panel, MetricCard, SourceLine, Unavailable } from "./primitives";
+import { Panel, MetricCard, Unavailable } from "./primitives";
 import { formatMoney } from "@/lib/format";
+import { BackingAllocation } from "./backing-allocation";
 const risks = [
   {
     title: "Funding and hedging",
@@ -34,8 +35,6 @@ const risks = [
   },
 ];
 export default function BackingView({ data }: { data: DashboardSnapshot }) {
-  const compositionTotal =
-    data.composition?.items.reduce((n, item) => n + item.value, 0) ?? 0;
   return (
     <>
       <div className="page-intro">
@@ -103,60 +102,7 @@ export default function BackingView({ data }: { data: DashboardSnapshot }) {
             stablecoins, and offsetting derivatives positions. The mix changes
             over time; the latest allocation must come from dated reports.
           </p>
-          {data.composition ? (
-            <>
-              <div className="chain-list">
-                {data.composition.items.map((item) => (
-                  <div className="chain-row" key={item.name}>
-                    <div>
-                      <span>{item.name}</span>
-                      <b>
-                        {((item.value / compositionTotal) * 100).toFixed(1)}% ·{" "}
-                        {formatMoney(item.value)}
-                      </b>
-                    </div>
-                    <div className="chain-track">
-                      <span
-                        style={{
-                          width: `${(item.value / compositionTotal) * 100}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="small-copy">
-                Shares use the aligned category subtotal (
-                {formatMoney(compositionTotal)}). Category observations may have
-                a different date or scope from the backing coverage report
-                above; they are not added to that total. Category names are the
-                issuer’s labels.
-              </p>
-              <SourceLine
-                metric={{
-                  ...data.metrics.backing,
-                  value: compositionTotal,
-                  status: data.composition.status,
-                  observedAt: data.composition.observedAt,
-                  fetchedAt: data.composition.fetchedAt,
-                  unit: "USD",
-                  methodology:
-                    "Latest timestamp present in every issuer backing category; shares divide each category by their subtotal. Not combined with the separate reserve report.",
-                  coverage: "Issuer-reported backing categories",
-                  maxAgeHours: 24,
-                }}
-                expanded
-              />
-            </>
-          ) : (
-            <Unavailable
-              title="Current allocation could not update"
-              href="https://app.ethena.fi/dashboards/transparency"
-            >
-              Aligned, dated issuer category observations are required. Missing
-              categories are not estimated.
-            </Unavailable>
-          )}
+          <BackingAllocation data={data} />
           <a
             href="https://docs.ethena.fi/resources/usde-terms-and-conditions"
             target="_blank"

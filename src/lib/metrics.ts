@@ -93,6 +93,22 @@ export function retainVerified(
   )
     return next;
   const result = { ...next, metrics: { ...next.metrics } };
+  for (const kind of ["fees", "revenue"] as const) {
+    const old = previous.economics?.[kind];
+    const current = next.economics?.[kind];
+    if (
+      old &&
+      old.metric.status !== "demo" &&
+      (!current ||
+        Date.parse(old.metric.observedAt ?? "") >
+          Date.parse(current.metric.observedAt ?? ""))
+    ) {
+      result.economics = {
+        ...result.economics,
+        [kind]: { ...old, metric: { ...old.metric, status: "stale" } },
+      };
+    }
+  }
   if (
     previous.composition &&
     (!next.composition ||

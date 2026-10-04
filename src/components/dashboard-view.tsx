@@ -19,11 +19,19 @@ const BackingView = dynamic(() => import("./backing-view"), {
 const MethodologyView = dynamic(() => import("./methodology-view"), {
   loading: DashboardSkeleton,
 });
+const EnaView = dynamic(() => import("./ena-view"), {
+  loading: DashboardSkeleton,
+});
+const EconomicsView = dynamic(() => import("./economics-view"), {
+  loading: DashboardSkeleton,
+});
 export type Section =
   | "overview"
   | "flow"
   | "yield"
   | "backing"
+  | "ena"
+  | "economics"
   | "learn"
   | "sources";
 export function sectionForPath(path: string): Section {
@@ -36,6 +44,8 @@ export function sectionForPath(path: string): Section {
         "/yield": "yield",
         "/forces": "yield",
         "/backing": "backing",
+        "/ena": "ena",
+        "/economics": "economics",
         "/learn": "learn",
         "/events": "learn",
         "/sources": "sources",
@@ -55,7 +65,9 @@ export function DashboardView({
   range: RangeKey;
   onRangeChange: (range: RangeKey) => void;
 }) {
-  const isChartPage = ["overview", "flow", "yield"].includes(section);
+  const isChartPage = ["overview", "flow", "yield", "economics"].includes(
+    section,
+  );
   const rangeControls = (
     <div className="range-toolbar">
       <span>
@@ -85,6 +97,8 @@ export function DashboardView({
       {section === "flow" && <TapeView data={data} range={range} />}
       {section === "yield" && <YieldView data={data} range={range} />}
       {section === "backing" && <BackingView data={data} />}
+      {section === "ena" && <EnaView data={data} />}
+      {section === "economics" && <EconomicsView data={data} range={range} />}
       {section === "learn" && <LearnView />}
       {section === "sources" && <MethodologyView data={data} />}
     </>

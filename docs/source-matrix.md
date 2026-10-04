@@ -37,3 +37,20 @@ Implementation order:
 
 New adapter details, verified sources and public-provider limits: [integrations](integrations.md).
 Review implementation tickets: [ticket index](review-tickets.md).
+
+## October 4 additions
+
+| Metric | Source | Calculation and limitation |
+| --- | --- | --- |
+| 7/30/90-day USDe growth | Existing global USDe daily supply | Exact UTC endpoint dates; percentage divides change by baseline; zero baselines have no percentage |
+| ENA milestone schedule and approval | [Official governance thread](https://gov.ethenafoundation.com/t/ena-fee-switch-activation/830) and its linked Snapshot vote | Published Aug 27, approval reported Sep 8; reviewed Oct 4. Static dated evidence, not a live activation feed |
+| 14-day supply average | Existing global daily supply | Arithmetic mean of 14 consecutive daily samples; no interpolation. Comparison to the committee recommendation; implemented trigger adoption is unverified here |
+| USDe tracked gross fees | `https://api.llama.fi/summary/fees/ethena-usde?dataType=dailyFees` | Protocol `4133`; mint fees and reward distributions. Sum complete 7/30 UTC days; current day excluded |
+| USDe provider revenue | `https://api.llama.fi/summary/fees/ethena-usde?dataType=dailyRevenue` | Protocol `4133`; mint fees and reserve allocations. Independent feed and dates; not Foundation net revenue |
+| Fee/revenue definitions | [Official DeFiLlama adapter](https://github.com/DefiLlama/dimension-adapters/blob/master/fees/ethena.ts) | Inspected Oct 4. Definitions may change upstream |
+| Foundation net revenue / executed ENA purchases | [Official transparency dashboard](https://app.ethena.fi/dashboards/transparency) | Report link only; no verified numerical feed connected and no values inferred from gross fees |
+
+Live public fee/revenue payloads were inspected on October 4. Locally computed
+complete 7/30-day totals matched their provider aggregates. Economics has a
+48-hour freshness window and independent stale-series retention. No schema
+migration or stored snapshot version change is required.

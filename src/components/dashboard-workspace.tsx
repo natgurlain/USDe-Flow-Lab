@@ -21,6 +21,14 @@ function ageSnapshot(snapshot: DashboardSnapshot): DashboardSnapshot {
       ]),
     ) as DashboardSnapshot["metrics"],
     priceHistoryMeta: withFreshness(snapshot.priceHistoryMeta),
+    economics: snapshot.economics
+      ? Object.fromEntries(
+          Object.entries(snapshot.economics).map(([kind, series]) => [
+            kind,
+            { ...series, metric: withFreshness(series.metric) },
+          ]),
+        )
+      : undefined,
     composition: snapshot.composition
       ? {
           ...snapshot.composition,
@@ -102,6 +110,21 @@ export default function DashboardWorkspace({
             previous.priceHistoryMeta.value !== null && previous.mode !== "demo"
               ? { ...previous.priceHistoryMeta, status: "stale" }
               : previous.priceHistoryMeta,
+          economics: previous.economics
+            ? Object.fromEntries(
+                Object.entries(previous.economics).map(([kind, series]) => [
+                  kind,
+                  {
+                    ...series,
+                    metric: {
+                      ...series.metric,
+                      status:
+                        series.metric.status === "demo" ? "demo" : "stale",
+                    },
+                  },
+                ]),
+              )
+            : undefined,
         }));
         setNotice(
           "Refresh unavailable. Any retained readings keep their original observation dates.",
@@ -155,9 +178,12 @@ export default function DashboardWorkspace({
     else url.searchParams.set("range", next);
     window.history.pushState(null, "", url);
   }
-  const available = Object.values(data.metrics).filter(
-    (metric) => metric.value !== null,
-  ).length;
+  const available =
+    Object.values(data.metrics).filter((metric) => metric.value !== null)
+      .length +
+    Object.values(data.economics ?? {}).filter(
+      (series) => series.metric.value !== null,
+    ).length;
   useEffect(() => {
     if (section !== "learn") publish(data);
   }, [data, section, publish]);

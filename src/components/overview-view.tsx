@@ -1,8 +1,15 @@
 "use client";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, ArrowUpRight } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  CircleDollarSign,
+  Layers,
+  ShieldCheck,
+} from "lucide-react";
 import { TokenGuide } from "./token-guide";
+import { SupplyGrowth } from "./supply-growth";
 import { HistoryPanel } from "./history-panel";
 import { MetricCard, Panel } from "./primitives";
 import { formatCompact, formatMoney, formatSignedMoney } from "@/lib/format";
@@ -23,6 +30,7 @@ export default function OverviewView({
   const realized = m.realized7d.value !== null;
   const shownYield = realized ? m.realized7d : m.yield;
   const peg = pegDifference(m.price.value);
+  const viewQuery = range === "90d" ? "" : "?range=" + range;
   const supplySummary =
     delta === null
       ? "A seven-day supply comparison is unavailable."
@@ -35,11 +43,23 @@ export default function OverviewView({
     <>
       <section className="overview-intro">
         <p className="eyebrow">INDEPENDENT ETHENA DASHBOARD</p>
-        <h1>Ethena at a glance</h1>
+        <h1>
+          Digital dollars.
+          <br />
+          <span>A clearer perspective.</span>
+        </h1>
         <p>
-          USDe aims to track $1. sUSDe is staked USDe and receives variable
-          rewards.
+          Follow USDe supply, understand sUSDe yield, and explore the backing.
+          Public data, explained in plain English.
         </p>
+        <div className="hero-actions">
+          <Link href={"/flow" + viewQuery} className="hero-action primary">
+            Explore USDe flow <ArrowRight size={16} />
+          </Link>
+          <Link href="/learn" className="hero-action">
+            Start with the basics <ArrowUpRight size={16} />
+          </Link>
+        </div>
       </section>
       <div className="headline-grid">
         <MetricCard
@@ -95,37 +115,6 @@ export default function OverviewView({
           metric={shownYield}
         />
       </div>
-      <div className="quick-guide">
-        <Link href="/learn" className="text-link">
-          New here? Understand the basics <ArrowRight size={14} />
-        </Link>
-        <p>
-          <b>USDe</b> aims to track $1. Holding it alone does not earn staking
-          rewards.
-        </p>
-        <p>
-          <b>sUSDe</b> is staked USDe. Rewards can increase its value in USDe;
-          returns vary.
-        </p>
-        <p>
-          <b>Reported backing:</b>{" "}
-          {m.backing.value === null
-            ? "Not available here; check the issuer report below."
-            : `${m.backing.value.toFixed(2)}% including reserve · observed ${m.backing.observedAt?.slice(0, 10)} · ${m.backing.status === "stale" ? "last verified / delayed" : m.backing.status === "demo" ? "demo" : "issuer report"}.`}{" "}
-          Coverage alone does not guarantee immediate redemption.
-        </p>
-        <Link href="/backing" className="text-link">
-          What backs USDe, and what could go wrong? <ArrowRight size={14} />
-        </Link>
-        <a
-          className="text-link"
-          href="https://app.ethena.fi/dashboards/transparency"
-          target="_blank"
-          rel="noreferrer"
-        >
-          View the latest official backing reports ↗
-        </a>
-      </div>
       <div className="plain-summary">
         <span className="summary-icon">↗</span>
         <div>
@@ -136,6 +125,7 @@ export default function OverviewView({
           </p>
         </div>
       </div>
+      <SupplyGrowth data={data} />
       {chartControls}
       <div className="charts-grid">
         <HistoryPanel
@@ -157,6 +147,52 @@ export default function OverviewView({
           kind="price"
         />
       </div>
+      <section className="quick-guide" aria-label="Understand the essentials">
+        <article className="guide-card">
+          <CircleDollarSign size={24} strokeWidth={1.5} />
+          <h3>A dollar designed to track $1</h3>
+          <p>
+            USDe is a synthetic dollar. Holding it alone does not earn staking
+            rewards.
+          </p>
+          <Link href="/learn" className="text-link">
+            Understand USDe <ArrowRight size={14} />
+          </Link>
+        </article>
+        <article className="guide-card">
+          <Layers size={24} strokeWidth={1.5} />
+          <h3>Where the yield comes from</h3>
+          <p>
+            sUSDe is staked USDe. Rewards can increase its value in USDe;
+            returns vary.
+          </p>
+          <Link href={"/yield" + viewQuery} className="text-link">
+            Explore sUSDe yield <ArrowRight size={14} />
+          </Link>
+        </article>
+        <article className="guide-card">
+          <ShieldCheck size={24} strokeWidth={1.5} />
+          <h3>Understand the backing</h3>
+          <p>Coverage alone does not guarantee immediate redemption.</p>
+          <p className="guide-meta">
+            Reported backing:{" "}
+            {m.backing.value === null
+              ? "Unavailable; check the issuer report."
+              : `${m.backing.value.toFixed(2)}% including reserve · observed ${m.backing.observedAt?.slice(0, 10)} · ${m.backing.status === "stale" ? "last verified / delayed" : m.backing.status === "demo" ? "demo" : "issuer report"}.`}
+          </p>
+          <Link href={"/backing" + viewQuery} className="text-link">
+            Explore backing & risks <ArrowRight size={14} />
+          </Link>
+          <a
+            className="text-link"
+            href="https://app.ethena.fi/dashboards/transparency"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Official backing reports <ArrowUpRight size={14} />
+          </a>
+        </article>
+      </section>
       <div className="section-heading">
         <div>
           <p className="eyebrow">THREE DIFFERENT ROLES</p>

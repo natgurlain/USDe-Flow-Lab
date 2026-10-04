@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   BookOpen,
   ChartNoAxesCombined,
+  Coins,
   LayoutDashboard,
   RefreshCw,
   ShieldCheck,
@@ -44,6 +45,13 @@ const navigation = [
     href: "/backing",
     label: "Backing & Risks",
     icon: ShieldCheck,
+  },
+  { section: "ena", href: "/ena", label: "ENA & Buybacks", icon: Coins },
+  {
+    section: "economics",
+    href: "/economics",
+    label: "Economics",
+    icon: ChartNoAxesCombined,
   },
   { section: "learn", href: "/learn", label: "Learn", icon: BookOpen },
 ] as const;
@@ -154,9 +162,11 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 <i />
                 {section === "learn"
                   ? "Learning guide"
-                  : data.mode === "demo"
-                    ? "Demo data"
-                    : "Public data"}
+                  : !snapshot
+                    ? "Loading data"
+                    : data.mode === "demo"
+                      ? "Demo data"
+                      : "Public data"}
               </span>
               <button
                 type="button"
@@ -181,6 +191,13 @@ export default function DashboardShell({ children }: { children: ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            <Link
+              href={"/sources" + viewQuery}
+              className={section === "sources" ? "active" : ""}
+              aria-current={section === "sources" ? "page" : undefined}
+            >
+              Sources & methods
+            </Link>
           </nav>
           <main id="main-content" className="main-content" tabIndex={-1}>
             {children}

@@ -1,9 +1,10 @@
 "use client";
 import type { DashboardSnapshot } from "@/lib/types";
-import { dailyChanges, supplyDelta, type RangeKey } from "@/lib/metrics";
+import { dailyChanges, type RangeKey } from "@/lib/metrics";
 import { formatCompact, formatSignedMoney } from "@/lib/format";
 import { HistoryPanel } from "./history-panel";
-import { MetricCard, Panel, SourceLine, Unavailable } from "./primitives";
+import { SupplyGrowth } from "./supply-growth";
+import { Panel, SourceLine, Unavailable } from "./primitives";
 export default function TapeView({
   data,
   range,
@@ -11,7 +12,6 @@ export default function TapeView({
   data: DashboardSnapshot;
   range: RangeKey;
 }) {
-  const latest = data.supplyHistory.at(-1);
   const changes = dailyChanges(data.supplyHistory);
   const covered = data.chains.reduce((sum, chain) => sum + chain.supply, 0);
   return (
@@ -24,27 +24,7 @@ export default function TapeView({
           understand how dollars are created and redeemed.
         </p>
       </div>
-      <div className="three-column">
-        {[1, 7, 30].map((days) => {
-          const delta = supplyDelta(data.supplyHistory, days);
-          return (
-            <MetricCard
-              key={days}
-              label={`Supply change · ${days === 1 ? "1 day" : days + " days"}`}
-              value={delta === null ? "Unavailable" : formatSignedMoney(delta)}
-              detail={`Window ends ${latest?.date ?? "when observations are available"}`}
-              explanation="Difference between two daily observations, valued at the $1 target."
-              metric={{
-                ...data.metrics.supply,
-                value: delta,
-                status:
-                  delta === null ? "unavailable" : data.metrics.supply.status,
-                methodology: `Supply on the latest date minus supply exactly ${days} calendar days earlier.`,
-              }}
-            />
-          );
-        })}
-      </div>
+      <SupplyGrowth data={data} includeDaily />
       <HistoryPanel
         title="USDe supply over time"
         description="The observed global supply, valued at the $1 target. Bridge balances are not added to this total."

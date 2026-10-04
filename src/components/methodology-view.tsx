@@ -1,5 +1,7 @@
 import type { DashboardSnapshot, MetricKey } from "@/lib/types";
 import { Panel, SourceLine } from "./primitives";
+import { BUYBACK_GOVERNANCE } from "@/lib/analytics";
+import { economicMetric, ECONOMIC_SOURCES } from "@/lib/economics";
 const names: Record<MetricKey, string> = {
   realized7d: "Realized trailing 7-day APY",
   realized30d: "Realized trailing 30-day APY",
@@ -80,7 +82,59 @@ export default function MethodologyView({ data }: { data: DashboardSnapshot }) {
             <p>{data.priceHistoryMeta.methodology}</p>
             <SourceLine metric={data.priceHistoryMeta} expanded />
           </article>
+          {(["fees", "revenue"] as const).map((kind) => {
+            const metric =
+              data.economics?.[kind]?.metric ?? economicMetric(kind);
+            return (
+              <article key={kind}>
+                <h3>
+                  {kind === "fees"
+                    ? "USDe tracked gross fees"
+                    : "USDe provider-defined revenue"}
+                </h3>
+                <p>{metric.methodology}</p>
+                <p className="small-copy">
+                  7/30-day totals require consecutive complete UTC daily
+                  samples. The current UTC day is excluded. Original dates and
+                  freshness are preserved.
+                </p>
+                <SourceLine metric={metric} expanded />
+                <a
+                  className="text-link"
+                  href={ECONOMIC_SOURCES.adapter}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Inspect provider definitions ↗
+                </a>
+              </article>
+            );
+          })}
         </div>
+      </Panel>
+      <Panel title="Supply comparisons and ENA milestones">
+        <p className="body-copy">
+          Growth compares the latest daily USDe supply with observations exactly
+          7, 30 and 90 calendar days earlier. Percentages use the baseline
+          supply. Zero baselines have no percentage. The ENA comparison requires
+          14 consecutive daily samples and uses their arithmetic average.
+        </p>
+        <p className="body-copy">
+          The official forum reported governance approval on{" "}
+          {BUYBACK_GOVERNANCE.voteReported}. The committee recommended a 14-day
+          average; its adoption as the implemented trigger and executed buyback
+          totals remain unverified here. Crossing a displayed milestone is not
+          evidence of a purchase. Governance evidence reviewed{" "}
+          {BUYBACK_GOVERNANCE.reviewed}.
+        </p>
+        <a
+          className="text-link"
+          href={BUYBACK_GOVERNANCE.url}
+          target="_blank"
+          rel="noreferrer"
+        >
+          Read the dated governance evidence ↗
+        </a>
       </Panel>
       <div className="two-column">
         <Panel title="What the charts measure">
