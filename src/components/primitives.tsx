@@ -45,6 +45,8 @@ export function observedLabel(value: string | null) {
     : "No observation";
 }
 function readableSource(url: string) {
+  if (url.includes("api.llama.fi/summary/fees/ethena-usde"))
+    return "https://defillama.com/protocol/ethena-usde?fees=true";
   if (url.includes("stablecoins.llama.fi"))
     return "https://defillama.com/stablecoin/ethena-usde";
   if (url.includes("yields.llama.fi"))

@@ -63,8 +63,8 @@ export default function HistoryChart({
           >
             <defs>
               <linearGradient id={`fill-${kind}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#b1f59f" stopOpacity={0.25} />
-                <stop offset="100%" stopColor="#b1f59f" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.25} />
+                <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid stroke="#ffffff0b" vertical={false} />
@@ -83,7 +83,7 @@ export default function HistoryChart({
               minTickGap={55}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#8b9694", fontSize: 12 }}
+              tick={{ fill: "var(--subtle)", fontSize: 12 }}
             />
             <YAxis
               domain={
@@ -100,7 +100,7 @@ export default function HistoryChart({
               width={80}
               axisLine={false}
               tickLine={false}
-              tick={{ fill: "#8b9694", fontSize: 12 }}
+              tick={{ fill: "var(--subtle)", fontSize: 12 }}
             />
             <Tooltip
               labelFormatter={(label) =>
@@ -116,35 +116,35 @@ export default function HistoryChart({
                 kind === "yield" ? "Estimated APY" : label,
               ]}
               contentStyle={{
-                background: "#16201f",
-                border: "1px solid #344440",
+                background: "var(--surface-raised)",
+                border: "1px solid var(--line)",
                 borderRadius: 12,
-                color: "#f3f6f3",
+                color: "var(--text)",
               }}
             />
             {isPrice && (
               <ReferenceLine
                 y={0}
-                stroke="#a1aba7"
+                stroke="var(--muted)"
                 strokeDasharray="4 4"
                 label={{
                   value: "$1 target · 0%",
                   position: "insideTopRight",
-                  fill: "#a1aba7",
+                  fill: "var(--muted)",
                   fontSize: 12,
                 }}
               />
             )}
             {kind === "change" ? (
               <>
-                <ReferenceLine y={0} stroke="#a1aba7" />
-                <Bar dataKey="value" fill="#9edbcb" radius={[2, 2, 0, 0]} />
+                <ReferenceLine y={0} stroke="var(--muted)" />
+                <Bar dataKey="value" fill="var(--ice)" radius={[2, 2, 0, 0]} />
               </>
             ) : kind === "supply" ? (
               <Area
                 type="linear"
                 dataKey="value"
-                stroke="#b1f59f"
+                stroke="var(--accent)"
                 strokeWidth={2}
                 fill={`url(#fill-${kind})`}
                 isAnimationActive={false}
@@ -153,7 +153,7 @@ export default function HistoryChart({
               <Line
                 type="linear"
                 dataKey="value"
-                stroke={isPrice ? "#9edbcb" : "#d1bdf8"}
+                stroke={isPrice ? "var(--ice)" : "var(--purple)"}
                 strokeWidth={2}
                 dot={false}
                 isAnimationActive={false}

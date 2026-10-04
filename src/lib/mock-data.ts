@@ -1,6 +1,7 @@
 import type { DashboardSnapshot, MetricKey, SeriesPoint } from "./types";
 import { DAY, supplyDelta } from "./metrics";
 import { emptySnapshot } from "./data-provider";
+import { economicMetric } from "./economics";
 
 // Explicit demo only. These values do not describe historical Ethena events.
 export function getMockSnapshot(): DashboardSnapshot {
@@ -37,6 +38,46 @@ export function getMockSnapshot(): DashboardSnapshot {
       methodology: "Synthetic illustration; not an Ethena observation.",
     };
   data.priceHistoryMeta = { ...data.metrics.price, status: "demo" };
+  data.composition = {
+    items: [
+      {
+        name: "Crypto backing · illustration",
+        value: data.metrics.supply.value! * 0.55,
+      },
+      {
+        name: "Stablecoins · illustration",
+        value: data.metrics.supply.value! * 0.3,
+      },
+      {
+        name: "Other assets · illustration",
+        value: data.metrics.supply.value! * 0.15,
+      },
+    ],
+    observedAt: new Date(end).toISOString(),
+    fetchedAt: data.fetchedAt,
+    status: "demo",
+  };
+  data.economics = {};
+  for (const kind of ["fees", "revenue"] as const) {
+    const points = make((day) =>
+      kind === "fees"
+        ? 200_000 + Math.sin(day / 8) * 80_000
+        : 2_000 + Math.sin(day / 8) * 800,
+    ).slice(0, -1);
+    data.economics[kind] = {
+      points,
+      metric: {
+        ...economicMetric(kind),
+        value: points.at(-1)!.value,
+        status: "demo",
+        source: "Illustrative demo",
+        observedAt: points.at(-1)!.date + "T00:00:00.000Z",
+        fetchedAt: data.fetchedAt,
+        methodology:
+          "Synthetic cash-flow illustration, not observed Ethena data.",
+      },
+    };
+  }
   data.chains = [
     {
       chain: "Ethereum",

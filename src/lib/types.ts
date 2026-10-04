@@ -12,6 +12,7 @@ export type Metric = {
   maxAgeHours: number;
 };
 export type SeriesPoint = { date: string; value: number };
+export type EconomicSeries = { points: SeriesPoint[]; metric: Metric };
 export type ChainPoint = { chain: string; supply: number; observedAt: string };
 export type MetricKey =
   | "supply"
@@ -39,6 +40,10 @@ export type DashboardSnapshot = {
   priceHistoryMeta: Metric;
   chains: ChainPoint[];
   providerFailures?: string[];
+  economics?: {
+    fees?: EconomicSeries;
+    revenue?: EconomicSeries;
+  };
   composition?: {
     items: { name: string; value: number }[];
     observedAt: string;

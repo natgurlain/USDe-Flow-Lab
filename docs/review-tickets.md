@@ -15,3 +15,17 @@
 Implementation and operating limitations: [integrations](integrations.md).
 The tickets cover the review improvements, not a claim of complete multi-network
 historical issuance coverage or verified counterparty concentration.
+
+## October 4 design and feature tickets
+
+| Ticket | Scope | Verification |
+| --- | --- | --- |
+| [#10](https://github.com/natgurlain/USDe-Flow-Lab/issues/10) | Fixed 7/30/90-day supply growth and percentages on Overview/Flow | Exact dates, leap days, zero baseline, negative growth and missing-data tests |
+| [#11](https://github.com/natgurlain/USDe-Flow-Lab/issues/11) | Dated backing allocation graphic and accessible category/value/share table | Existing category alignment tests; desktop/mobile, empty and demo states |
+| [#12](https://github.com/natgurlain/USDe-Flow-Lab/issues/12) | ENA milestone view with approval and execution distinguished | Complete daily average, bounded progress and missing-day tests; official governance review |
+| [#13](https://github.com/natgurlain/USDe-Flow-Lab/issues/13) | Separate gross-fee and provider-revenue series, Foundation net revenue and purchase states | Protocol/schema validation, partial-day exclusion, exact-window sums, independent failures and stale retention tests |
+
+The accompanying Ethena-inspired redesign uses charcoal surfaces, silver borders,
+icy blue accents and a CSS horizon. Mobile navigation includes all views and stays
+available while scrolling. Numerical ENA price forecasts and copied third-party
+snapshot values are excluded.

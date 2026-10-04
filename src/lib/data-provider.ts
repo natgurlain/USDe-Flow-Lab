@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import { supplyDelta, withFreshness } from "./metrics";
 import { getMockSnapshot } from "./mock-data";
+import { ECONOMIC_SOURCES, economicMetric, parseEconomics } from "./economics";
 
 export const USDE_CONTRACT = "0x4c9edd5852cd905f086c759e8383e09bff1e68b3";
 export const SOURCES = {
@@ -511,6 +512,25 @@ export async function getProviderSnapshot(
         }
       }
     }),
+    ...(["fees", "revenue"] as const).map(async (kind) => {
+      const { data: points, fetchedAt } = await load(
+        ECONOMIC_SOURCES[kind],
+        parseEconomics,
+      );
+      const last = points.at(-1)!;
+      snapshot.economics = {
+        ...snapshot.economics,
+        [kind]: {
+          points,
+          metric: observe(
+            economicMetric(kind),
+            last.value,
+            last.date + "T00:00:00.000Z",
+            fetchedAt,
+          ),
+        },
+      };
+    }),
   ]);
   const providers = [
     "supply",
@@ -523,6 +543,8 @@ export async function getProviderSnapshot(
     "vault-current",
     "vault-returns",
     "primary-flows",
+    "fees",
+    "revenue",
   ];
   snapshot.providerFailures = results.flatMap((result, index) => {
     if (result.status === "fulfilled") return [];

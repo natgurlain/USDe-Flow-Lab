@@ -5,7 +5,7 @@ the dollars, yield, and risks before exploring the technical details.
 
 ## Views
 
-- **Overview:** four headline readings and a compact backing summary, plain-English observations, supply and
+- **Overview:** four headline readings, fixed 7/30/90-day growth comparisons, a backing guide, plain-English observations, supply and
   daily price charts, USDe/sUSDe/ENA explanations, and a separate ecosystem panel.
 - **USDe Flow:** calendar-date supply comparisons, daily differences, aligned
   network distribution, and a bounded day of finalized Ethereum Mint/Redeem events.
@@ -13,6 +13,12 @@ the dollars, yield, and risks before exploring the technical details.
   participation, provider estimate history, and an editable illustration.
 - **Backing & Risks:** dated issuer backing coverage, reserve and category
   composition, official attestations, and six plain-language risk explanations.
+- **ENA & Buybacks:** dated governance approval, the published milestone ladder,
+  latest supply and a complete 14-day daily-average comparison. Activation and
+  executed purchases remain separate, unverified facts here.
+- **Economics:** independently fetched USDe-specific gross fee and provider-revenue
+  series, complete 7/30-day totals, and dated charts. Foundation net revenue and
+  executed ENA buybacks are explicitly unavailable without their own verified feeds.
 - **Learn:** short answers and a glossary. **Sources & methods:** every metric's
   calculation, coverage, unit, observation time, fetch time, and freshness window.
 
@@ -35,8 +41,23 @@ Official issuer feeds provide timestamped backing assets, reserve fund, matching
 USDe supply and category composition. Coverage includes the reserve once and uses
 the issuer's matching denominator; category shares use their separately dated
 subtotal. These are issuer reports, not an independent solvency verification.
+The allocation graphic and category/value/share table use the same aligned
+issuer category subtotal; they do not add reserves a second time.
 Custodian/counterparty concentrations remain unavailable; dated attestations are
 linked through the official transparency dashboard.
+
+Economics uses DeFiLlama’s **Ethena USDe** adapter (`4133`), not the parent
+Ethena aggregate. Its fee definition includes mint fees and reward distributions;
+its revenue definition includes mint fees and reserve allocations. These are not
+Foundation net earnings. Aggregations require every UTC day and exclude the
+ongoing day. A 48-hour freshness window allows for complete-day reporting; stale
+series keep their original dates. Older stored version-2 snapshots remain valid
+and can gain the optional economics fields on refresh.
+
+The ENA framework was published August 27, 2026; the official forum reported
+the vote passed September 8. Evidence was reviewed October 4. The committee
+recommended a 14-day average, but this app has not verified that measure as the
+implemented trigger. Threshold progress is context, not proof of execution.
 
 The flow adapter queries only the official Ethereum issuer's Mint/Redeem events
 in a bounded finalized-day window. It excludes transfers, bridges and secondary
